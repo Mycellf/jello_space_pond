@@ -1,9 +1,22 @@
+pub mod simulation;
+pub mod soft_body;
+pub mod utils;
+
+use std::f32::consts::SQRT_2;
+
 use macroquad::{
+    camera::{self, Camera2D},
     input::{self, KeyCode},
+    math::{Vec2, vec2},
     window::{self, Conf},
 };
 
-const START_IN_FULLSCREEN: bool = true;
+use crate::{
+    simulation::Simulation,
+    soft_body::{Line, Point, SoftBody, Spring},
+};
+
+const START_IN_FULLSCREEN: bool = false;
 
 fn config() -> Conf {
     Conf {
@@ -15,6 +28,96 @@ fn config() -> Conf {
 
 #[macroquad::main(config)]
 async fn main() {
+    let mut simulation = Simulation {
+        soft_bodies: vec![
+            SoftBody {
+                shape: vec![
+                    (
+                        Point {
+                            position: vec2(0.0, -1.0),
+                            mass: 1.0,
+                            ..Default::default()
+                        },
+                        Line::default(),
+                    ),
+                    (
+                        Point {
+                            position: vec2(0.5, -1.5),
+                            mass: 1.0,
+                            ..Default::default()
+                        },
+                        Line {
+                            spring: Spring {
+                                force_constant: 0.0,
+                                ..Default::default()
+                            },
+                        },
+                    ),
+                ],
+                internal_springs: vec![],
+                bounding_box: Default::default(),
+            },
+            SoftBody {
+                shape: vec![
+                    (
+                        Point {
+                            position: vec2(0.0, 0.0),
+                            mass: 1.0,
+                            ..Default::default()
+                        },
+                        Line::default(),
+                    ),
+                    (
+                        Point {
+                            position: vec2(0.1, 0.0),
+                            mass: 1.0,
+                            ..Default::default()
+                        },
+                        Line::default(),
+                    ),
+                    (
+                        Point {
+                            position: vec2(1.0, 1.0),
+                            mass: 1.0,
+                            ..Default::default()
+                        },
+                        Line::default(),
+                    ),
+                    (
+                        Point {
+                            position: vec2(0.0, 1.0),
+                            mass: 1.0,
+                            ..Default::default()
+                        },
+                        Line::default(),
+                    ),
+                ],
+                internal_springs: vec![
+                    (
+                        [0, 2],
+                        Spring {
+                            target_distance: SQRT_2,
+                            ..Default::default()
+                        },
+                    ),
+                    (
+                        [1, 3],
+                        Spring {
+                            target_distance: SQRT_2,
+                            ..Default::default()
+                        },
+                    ),
+                ],
+                bounding_box: Default::default(),
+            },
+        ],
+    };
+
+    let mut camera = Camera2D {
+        zoom: -2.0 / Vec2::splat(5.0),
+        ..Default::default()
+    };
+
     let mut fullscreen = START_IN_FULLSCREEN;
 
     loop {
@@ -22,6 +125,13 @@ async fn main() {
             fullscreen ^= true;
             macroquad::window::set_fullscreen(fullscreen);
         }
+
+        simulation.update(1.0 / 120.0);
+
+        utils::update_camera_aspect_ratio(&mut camera);
+        camera::set_camera(&camera);
+
+        simulation.draw();
 
         window::next_frame().await;
     }
