@@ -42,19 +42,138 @@ async fn main() {
                     ),
                     (
                         Point {
+                            position: vec2(-0.5, -1.0),
+                            mass: 1.0,
+                            ..Default::default()
+                        },
+                        Line::default(),
+                    ),
+                    (
+                        Point {
+                            position: vec2(-0.5, -1.5),
+                            mass: 1.0,
+                            ..Default::default()
+                        },
+                        Line::default(),
+                    ),
+                    (
+                        Point {
+                            position: vec2(0.0, -1.5),
+                            mass: 1.0,
+                            ..Default::default()
+                        },
+                        Line::default(),
+                    ),
+                    (
+                        Point {
                             position: vec2(0.5, -1.5),
                             mass: 1.0,
                             ..Default::default()
                         },
-                        Line {
-                            spring: Spring {
-                                force_constant: 0.0,
-                                ..Default::default()
-                            },
+                        Line::default(),
+                    ),
+                    (
+                        Point {
+                            position: vec2(1.0, -1.5),
+                            mass: 1.0,
+                            ..Default::default()
                         },
+                        Line::default(),
+                    ),
+                    (
+                        Point {
+                            position: vec2(1.0, -1.0),
+                            mass: 1.0,
+                            ..Default::default()
+                        },
+                        Line::default(),
+                    ),
+                    (
+                        Point {
+                            position: vec2(1.0, -0.5),
+                            mass: 1.0,
+                            ..Default::default()
+                        },
+                        Line::default(),
+                    ),
+                    (
+                        Point {
+                            position: vec2(0.5, -0.5),
+                            mass: 1.0,
+                            ..Default::default()
+                        },
+                        Line::default(),
+                    ),
+                    (
+                        Point {
+                            position: vec2(0.5, -1.0),
+                            mass: 1.0,
+                            ..Default::default()
+                        },
+                        Line::default(),
                     ),
                 ],
-                internal_springs: vec![],
+                internal_springs: vec![
+                    (
+                        [0, 2],
+                        Spring {
+                            target_distance: SQRT_2,
+                            ..Default::default()
+                        },
+                    ),
+                    (
+                        [1, 3],
+                        Spring {
+                            target_distance: SQRT_2,
+                            ..Default::default()
+                        },
+                    ),
+                    (
+                        [9, 3],
+                        Spring {
+                            target_distance: SQRT_2,
+                            ..Default::default()
+                        },
+                    ),
+                    (
+                        [0, 4],
+                        Spring {
+                            target_distance: SQRT_2,
+                            ..Default::default()
+                        },
+                    ),
+                    (
+                        [4, 6],
+                        Spring {
+                            target_distance: SQRT_2,
+                            ..Default::default()
+                        },
+                    ),
+                    (
+                        [5, 9],
+                        Spring {
+                            target_distance: SQRT_2,
+                            ..Default::default()
+                        },
+                    ),
+                    (
+                        [9, 7],
+                        Spring {
+                            target_distance: SQRT_2,
+                            ..Default::default()
+                        },
+                    ),
+                    (
+                        [8, 6],
+                        Spring {
+                            target_distance: SQRT_2,
+                            ..Default::default()
+                        },
+                    ),
+                    ([0, 3], Spring::default()),
+                    ([9, 4], Spring::default()),
+                    ([9, 6], Spring::default()),
+                ],
                 bounding_box: Default::default(),
             },
             SoftBody {
@@ -65,7 +184,9 @@ async fn main() {
                             mass: 1.0,
                             ..Default::default()
                         },
-                        Line::default(),
+                        Line {
+                            spring: Spring::default(),
+                        },
                     ),
                     (
                         Point {
@@ -73,7 +194,9 @@ async fn main() {
                             mass: 1.0,
                             ..Default::default()
                         },
-                        Line::default(),
+                        Line {
+                            spring: Spring::default(),
+                        },
                     ),
                     (
                         Point {
@@ -81,7 +204,9 @@ async fn main() {
                             mass: 1.0,
                             ..Default::default()
                         },
-                        Line::default(),
+                        Line {
+                            spring: Spring::default(),
+                        },
                     ),
                     (
                         Point {
@@ -89,7 +214,9 @@ async fn main() {
                             mass: 1.0,
                             ..Default::default()
                         },
-                        Line::default(),
+                        Line {
+                            spring: Spring::default(),
+                        },
                     ),
                 ],
                 internal_springs: vec![
@@ -132,6 +259,14 @@ async fn main() {
         camera::set_camera(&camera);
 
         simulation.draw();
+
+        let mouse_position = utils::mouse_position(&camera);
+
+        for soft_body in &simulation.soft_bodies {
+            if soft_body.bounding_box.contains_point(mouse_position) {
+                soft_body.bounding_box.draw();
+            }
+        }
 
         window::next_frame().await;
     }

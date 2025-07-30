@@ -1,4 +1,4 @@
-use macroquad::{camera::Camera2D, color::Color, window};
+use macroquad::{camera::Camera2D, color::Color, input, math::Vec2, window};
 
 #[must_use]
 pub fn exp_decay_cutoff(a: f32, b: f32, decay: f32, dt: f32, cutoff: f32) -> (f32, bool) {
@@ -32,4 +32,8 @@ pub const fn color_lerp(a: Color, b: Color, t: f32) -> Color {
 
 pub fn update_camera_aspect_ratio(camera: &mut Camera2D) {
     camera.zoom.x = camera.zoom.y.abs() * window::screen_height() / window::screen_width();
+}
+
+pub fn mouse_position(camera: &Camera2D) -> Vec2 {
+    camera.screen_to_world(input::mouse_position().into())
 }

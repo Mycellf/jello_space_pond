@@ -16,8 +16,6 @@ pub struct SoftBody {
 
 impl SoftBody {
     pub fn draw(&self) {
-        // self.bounding_box.draw();
-
         if self.shape.len() > 1 {
             let length = self.shape.len();
 
@@ -205,5 +203,12 @@ impl BoundingBox {
             0.1,
             colors::BLUE,
         );
+    }
+
+    pub fn contains_point(&self, point: Vec2) -> bool {
+        point.x >= self.min_corner.x
+            && point.y >= self.min_corner.y
+            && point.x <= self.min_corner.x + self.size.x
+            && point.y <= self.min_corner.y + self.size.y
     }
 }
