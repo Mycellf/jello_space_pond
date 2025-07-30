@@ -237,6 +237,67 @@ async fn main() {
                 ],
                 bounding_box: Default::default(),
             },
+            SoftBody {
+                shape: vec![
+                    (
+                        Point {
+                            position: vec2(2.0, 0.0),
+                            mass: 5.0,
+                            ..Default::default()
+                        },
+                        Line {
+                            spring: Spring::default(),
+                        },
+                    ),
+                    (
+                        Point {
+                            position: vec2(3.0, 0.0),
+                            mass: 5.0,
+                            ..Default::default()
+                        },
+                        Line {
+                            spring: Spring::default(),
+                        },
+                    ),
+                    (
+                        Point {
+                            position: vec2(3.0, 1.0),
+                            mass: 5.0,
+                            ..Default::default()
+                        },
+                        Line {
+                            spring: Spring::default(),
+                        },
+                    ),
+                    (
+                        Point {
+                            position: vec2(2.0, 1.0),
+                            mass: 5.0,
+                            ..Default::default()
+                        },
+                        Line {
+                            spring: Spring::default(),
+                        },
+                    ),
+                ],
+                internal_springs: vec![
+                    (
+                        [0, 2],
+                        Spring {
+                            target_distance: SQRT_2,
+                            ..Default::default()
+                        },
+                    ),
+                    (
+                        [1, 3],
+                        Spring {
+                            target_distance: SQRT_2,
+                            ..Default::default()
+                        },
+                    ),
+                ],
+                bounding_box: Default::default(),
+            },
         ],
     };
 
@@ -263,7 +324,7 @@ async fn main() {
         let mouse_position = utils::mouse_position(&camera);
 
         for soft_body in &simulation.soft_bodies {
-            if soft_body.bounding_box.contains_point(mouse_position) {
+            if soft_body.contains_point(mouse_position) {
                 soft_body.bounding_box.draw();
             }
         }

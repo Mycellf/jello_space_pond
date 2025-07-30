@@ -17,11 +17,9 @@ pub struct SoftBody {
 impl SoftBody {
     pub fn draw(&self) {
         if self.shape.len() > 1 {
-            let length = self.shape.len();
-
             for i in 0..self.shape.len() {
                 let (point_a, line) = &self.shape[i];
-                let (point_b, _) = &self.shape[if i < length - 1 { i + 1 } else { 0 }];
+                let (point_b, _) = &self.shape[if i < self.shape.len() - 1 { i + 1 } else { 0 }];
 
                 line.spring.draw_line(point_a, point_b);
             }
@@ -92,6 +90,66 @@ impl SoftBody {
             min_corner: min,
             size,
         };
+    }
+
+    pub fn contains_point(&self, point: Vec2) -> bool {
+        if self.bounding_box.contains_point(point) {
+            // Cast a horizontal line to the right of the point
+            let mut num_intersections = 0;
+
+            for i in 0..self.shape.len() {
+                let (point_a, _) = &self.shape[i];
+                let (point_b, _) = &self.shape[if i < self.shape.len() - 1 { i + 1 } else { 0 }];
+
+                let point_a = point_a.position;
+                let point_b = point_b.position;
+
+                if point_a.x < point.x && point_b.x < point.x {
+                    // Both points are to the left of line
+                    continue;
+                }
+
+                if (point_a.y > point.y) == (point_b.y > point.y) {
+                    // Both points are above or below
+                    continue;
+                }
+
+                if point_a.x >= point.x && point_b.x >= point.x {
+                    // Both points are to the right of the line
+                    let max_y = point_a.y.max(point_b.y);
+                    let min_y = point_a.y.min(point_b.y);
+
+                    if max_y > point.y && min_y <= point.y {
+                        // The lines intersect as one point is above, another is below
+                        num_intersections += 1;
+                        continue;
+                    }
+                }
+
+                // One is to the left, one is to the right
+                let (left_point, right_point) = if point_a.x < point_b.x {
+                    (point_a, point_b)
+                } else {
+                    (point_b, point_a)
+                };
+
+                let scaled_sin_angle = (right_point - left_point).perp_dot(point - left_point);
+
+                let intersection = if left_point.y > right_point.y {
+                    scaled_sin_angle <= 0.0
+                } else {
+                    scaled_sin_angle > 0.0
+                };
+
+                if intersection {
+                    num_intersections += 1;
+                }
+            }
+
+            num_intersections % 2 == 1
+        } else {
+            false
+        }
     }
 }
 
@@ -201,7 +259,7 @@ impl BoundingBox {
             self.size.x + 0.1,
             self.size.y + 0.1,
             0.1,
-            colors::BLUE,
+            colors::DARKBLUE,
         );
     }
 
