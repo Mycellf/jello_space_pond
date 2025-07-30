@@ -180,8 +180,8 @@ async fn main() {
                 shape: vec![
                     (
                         Point {
-                            position: vec2(0.0, 0.0),
-                            mass: 1.0,
+                            position: vec2(0.0, -0.5),
+                            mass: 5.0,
                             ..Default::default()
                         },
                         Line {
@@ -190,8 +190,8 @@ async fn main() {
                     ),
                     (
                         Point {
-                            position: vec2(0.1, 0.0),
-                            mass: 1.0,
+                            position: vec2(0.1, -0.5),
+                            mass: 5.0,
                             ..Default::default()
                         },
                         Line {
@@ -200,8 +200,8 @@ async fn main() {
                     ),
                     (
                         Point {
-                            position: vec2(1.0, 1.0),
-                            mass: 1.0,
+                            position: vec2(1.0, 0.5),
+                            mass: 5.0,
                             ..Default::default()
                         },
                         Line {
@@ -210,8 +210,8 @@ async fn main() {
                     ),
                     (
                         Point {
-                            position: vec2(0.0, 1.0),
-                            mass: 1.0,
+                            position: vec2(0.0, 0.5),
+                            mass: 5.0,
                             ..Default::default()
                         },
                         Line {
