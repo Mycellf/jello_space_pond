@@ -14,8 +14,6 @@ impl Simulation {
     pub fn update(&mut self, dt: f32) {
         for soft_body in &mut self.soft_bodies {
             soft_body.apply_impulse_and_velocity(dt);
-
-            soft_body.update_bounding_box();
         }
     }
 }

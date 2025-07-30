@@ -50,6 +50,8 @@ impl SoftBody {
         for (point, _) in &mut self.shape {
             point.apply_impulse_and_velocity(dt);
         }
+
+        self.update_bounding_box();
     }
 
     pub fn update_bounding_box(&mut self) {
