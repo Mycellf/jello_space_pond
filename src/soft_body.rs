@@ -168,6 +168,31 @@ impl SoftBody {
             false
         }
     }
+
+    pub fn closest_line_to_point(&self, point: Vec2) -> (usize, Vec2, f32) {
+        let mut closest_line = 0;
+        let mut closest_point = self.closest_point_on_line(0, point);
+        let mut closest_distance_squared = closest_point.distance_squared(point);
+
+        for i in 1..self.shape.len() {
+            let closest_point_on_line = self.closest_point_on_line(i, point);
+            let distance_squared = closest_point_on_line.distance_squared(point);
+
+            if distance_squared < closest_distance_squared {
+                closest_line = i;
+                closest_point = closest_point_on_line;
+                closest_distance_squared = distance_squared;
+            }
+        }
+
+        (closest_line, closest_point, closest_distance_squared)
+    }
+
+    pub fn closest_point_on_line(&self, line: usize, point: Vec2) -> Vec2 {
+        let (start, _, end) = self.get_line(line).unwrap();
+
+        utils::closest_point_on_line(start.position, end.position, point)
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -215,14 +240,7 @@ impl Spring {
             (force.length() / 2.0).clamp(0.0, 1.0),
         );
 
-        shapes::draw_line(
-            point_a.position.x,
-            point_a.position.y,
-            point_b.position.x,
-            point_b.position.y,
-            0.05,
-            color,
-        );
+        utils::draw_line(point_a.position, point_b.position, 0.05, color);
     }
 
     pub fn apply_force(&self, point_a: &mut Point, point_b: &mut Point, dt: f32) {

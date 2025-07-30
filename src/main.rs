@@ -6,8 +6,10 @@ use std::f32::consts::SQRT_2;
 
 use macroquad::{
     camera::{self, Camera2D},
+    color::colors,
     input::{self, KeyCode},
     math::{Vec2, vec2},
+    shapes,
     window::{self, Conf},
 };
 
@@ -326,6 +328,15 @@ async fn main() {
         for soft_body in &simulation.soft_bodies {
             if soft_body.contains_point(mouse_position) {
                 soft_body.bounding_box.draw();
+
+                let (closest_line, closest_point, _) =
+                    soft_body.closest_line_to_point(mouse_position);
+
+                let (point_a, _, point_b) = soft_body.get_line(closest_line).unwrap();
+
+                utils::draw_line(point_a.position, point_b.position, 0.05, colors::BLUE);
+
+                shapes::draw_circle(closest_point.x, closest_point.y, 0.05, colors::BLUE);
             }
         }
 
