@@ -39,16 +39,16 @@ pub fn mouse_position(camera: &Camera2D) -> Vec2 {
 }
 
 /// CREDIT: Grumdrig: <https://stackoverflow.com/a/1501725>
-pub fn closest_point_on_line(start: Vec2, end: Vec2, point: Vec2) -> Vec2 {
+pub fn closest_point_on_line(start: Vec2, end: Vec2, point: Vec2) -> (Vec2, f32) {
     let length_squared = (start - end).length_squared();
 
     if length_squared == 0.0 {
-        start
+        (start, 0.0)
     } else {
         let line_progress = (point - start).dot(end - start) / length_squared;
         let line_progress = line_progress.clamp(0.0, 1.0);
 
-        start + line_progress * (end - start)
+        (start + line_progress * (end - start), line_progress)
     }
 }
 

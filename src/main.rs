@@ -329,7 +329,7 @@ async fn main() {
             if soft_body.contains_point(mouse_position) {
                 soft_body.bounding_box.draw();
 
-                let (closest_line, closest_point, _) =
+                let (closest_line, closest_point, _, _) =
                     soft_body.closest_line_to_point(mouse_position);
 
                 let (point_a, _, point_b) = soft_body.get_line(closest_line).unwrap();

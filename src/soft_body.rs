@@ -169,29 +169,55 @@ impl SoftBody {
         }
     }
 
-    pub fn closest_line_to_point(&self, point: Vec2) -> (usize, Vec2, f32) {
+    /// Returns `(line index, closest point, distance squared, progress between points)`
+    pub fn closest_line_to_point(&self, point: Vec2) -> (usize, Vec2, f32, f32) {
         let mut closest_line = 0;
-        let mut closest_point = self.closest_point_on_line(0, point);
+        let (mut closest_point, mut closest_progress) = self.closest_point_on_line(0, point);
         let mut closest_distance_squared = closest_point.distance_squared(point);
 
         for i in 1..self.shape.len() {
-            let closest_point_on_line = self.closest_point_on_line(i, point);
+            let (closest_point_on_line, progress) = self.closest_point_on_line(i, point);
             let distance_squared = closest_point_on_line.distance_squared(point);
 
             if distance_squared < closest_distance_squared {
                 closest_line = i;
                 closest_point = closest_point_on_line;
+                closest_progress = progress;
                 closest_distance_squared = distance_squared;
             }
         }
 
-        (closest_line, closest_point, closest_distance_squared)
+        (
+            closest_line,
+            closest_point,
+            closest_distance_squared,
+            closest_progress,
+        )
     }
 
-    pub fn closest_point_on_line(&self, line: usize, point: Vec2) -> Vec2 {
+    pub fn closest_point_on_line(&self, line: usize, point: Vec2) -> (Vec2, f32) {
         let (start, _, end) = self.get_line(line).unwrap();
 
         utils::closest_point_on_line(start.position, end.position, point)
+    }
+
+    pub fn check_points_against_other_one_sided(&mut self, other: &mut SoftBody) -> bool {
+        let mut collided = false;
+
+        for (point, _) in &mut self.shape {
+            if !other.contains_point(point.position) {
+                continue;
+            }
+
+            let (_, closest_point, _, _) = other.closest_line_to_point(point.position);
+
+            // TODO: Actual collision response
+            point.position = closest_point;
+
+            collided = true;
+        }
+
+        collided
     }
 }
 
@@ -298,10 +324,21 @@ impl BoundingBox {
         );
     }
 
+    pub fn max_corner(&self) -> Vec2 {
+        self.min_corner + self.size
+    }
+
     pub fn contains_point(&self, point: Vec2) -> bool {
         point.x >= self.min_corner.x
             && point.y >= self.min_corner.y
-            && point.x <= self.min_corner.x + self.size.x
-            && point.y <= self.min_corner.y + self.size.y
+            && point.x <= self.max_corner().x
+            && point.y <= self.max_corner().y
+    }
+
+    pub fn intersects_other(&self, other: &BoundingBox) -> bool {
+        other.max_corner().x >= self.min_corner.x
+            && other.max_corner().y >= self.min_corner.y
+            && other.min_corner.x <= self.max_corner().x
+            && other.min_corner.y <= self.max_corner().y
     }
 }
