@@ -182,7 +182,7 @@ impl Default for Spring {
         Self {
             target_distance: 1.0,
             force_constant: 50.0,
-            damping: 5.0,
+            damping: 10.0,
         }
     }
 }
