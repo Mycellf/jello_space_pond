@@ -18,8 +18,7 @@ impl SoftBody {
     pub fn draw(&self) {
         if self.shape.len() > 1 {
             for i in 0..self.shape.len() {
-                let (point_a, line) = &self.shape[i];
-                let (point_b, _) = &self.shape[if i < self.shape.len() - 1 { i + 1 } else { 0 }];
+                let (point_a, line, point_b) = self.get_line(i).unwrap();
 
                 line.spring.draw_line(point_a, point_b);
             }
@@ -35,13 +34,8 @@ impl SoftBody {
 
     pub fn apply_impulse_and_velocity(&mut self, dt: f32) {
         if self.shape.len() > 1 {
-            let length = self.shape.len();
-
             for i in 0..self.shape.len() {
-                let [(point_a, line), (point_b, _)] = self
-                    .shape
-                    .get_disjoint_mut([i, if i < length - 1 { i + 1 } else { 0 }])
-                    .unwrap();
+                let (point_a, line, point_b) = self.get_line_mut(i).unwrap();
 
                 line.spring.apply_force(point_a, point_b, dt);
             }
@@ -92,14 +86,35 @@ impl SoftBody {
         };
     }
 
+    pub fn get_line(&self, i: usize) -> Option<(&Point, &Line, &Point)> {
+        let (point_a, line) = self.shape.get(i)?;
+        let (point_b, _) = &self.shape[if i < self.shape.len() - 1 { i + 1 } else { 0 }];
+
+        Some((point_a, line, point_b))
+    }
+
+    pub fn get_line_mut(&mut self, i: usize) -> Option<(&mut Point, &mut Line, &mut Point)> {
+        let length = self.shape.len();
+
+        if i >= length {
+            return None;
+        }
+
+        let [(point_a, line), (point_b, _)] = self
+            .shape
+            .get_disjoint_mut([i, if i < length - 1 { i + 1 } else { 0 }])
+            .unwrap();
+
+        Some((point_a, line, point_b))
+    }
+
     pub fn contains_point(&self, point: Vec2) -> bool {
         if self.bounding_box.contains_point(point) {
             // Cast a horizontal line to the right of the point
             let mut num_intersections = 0;
 
             for i in 0..self.shape.len() {
-                let (point_a, _) = &self.shape[i];
-                let (point_b, _) = &self.shape[if i < self.shape.len() - 1 { i + 1 } else { 0 }];
+                let (point_a, _, point_b) = self.get_line(i).unwrap();
 
                 let point_a = point_a.position;
                 let point_b = point_b.position;
