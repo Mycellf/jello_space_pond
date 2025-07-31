@@ -1,10 +1,10 @@
 use macroquad::color::colors;
-use slotmap::{SlotMap, new_key_type};
+use slotmap::{HopSlotMap, new_key_type};
 
 use crate::soft_body::SoftBody;
 
 pub struct Simulation {
-    pub soft_bodies: SlotMap<SoftBodyKey, SoftBody>,
+    pub soft_bodies: HopSlotMap<SoftBodyKey, SoftBody>,
     pub keys: Vec<SoftBodyKey>,
 }
 
@@ -15,7 +15,7 @@ new_key_type! {
 impl Simulation {
     pub fn new() -> Self {
         Self {
-            soft_bodies: SlotMap::default(),
+            soft_bodies: HopSlotMap::default(),
             keys: Vec::new(),
         }
     }
