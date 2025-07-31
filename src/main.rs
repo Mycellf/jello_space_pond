@@ -391,7 +391,7 @@ fn assemble_simulation() -> Simulation {
             (
                 Point {
                     position: vec2(-5.0, 3.0),
-                    velocity: vec2(1.0, -0.75),
+                    velocity: vec2(2.0, -1.5),
                     mass: 10.0,
                     ..Default::default()
                 },
@@ -406,7 +406,7 @@ fn assemble_simulation() -> Simulation {
             (
                 Point {
                     position: vec2(-4.0, 3.0),
-                    velocity: vec2(1.0, -0.75),
+                    velocity: vec2(2.0, -1.5),
                     mass: 10.0,
                     ..Default::default()
                 },
@@ -421,7 +421,7 @@ fn assemble_simulation() -> Simulation {
             (
                 Point {
                     position: vec2(-4.0, 4.0),
-                    velocity: vec2(1.0, -0.75),
+                    velocity: vec2(2.0, -1.5),
                     mass: 10.0,
                     ..Default::default()
                 },
@@ -436,7 +436,7 @@ fn assemble_simulation() -> Simulation {
             (
                 Point {
                     position: vec2(-5.0, 4.0),
-                    velocity: vec2(1.0, -0.75),
+                    velocity: vec2(2.0, -1.5),
                     mass: 10.0,
                     ..Default::default()
                 },
@@ -470,6 +470,86 @@ fn assemble_simulation() -> Simulation {
         ],
         50.0,
     ));
+
+    for x in 3..19 {
+        for y in -13..-5 {
+            let offset = vec2(x as f32, y as f32);
+
+            simulation.soft_bodies.insert(SoftBody::new(
+                vec![
+                    (
+                        Point {
+                            position: offset + vec2(0.0, 0.0),
+                            mass: 1.0,
+                            ..Default::default()
+                        },
+                        Line {
+                            spring: Spring {
+                                target_distance: 0.5,
+                                ..Default::default()
+                            },
+                        },
+                    ),
+                    (
+                        Point {
+                            position: offset + vec2(0.5, 0.0),
+                            mass: 1.0,
+                            ..Default::default()
+                        },
+                        Line {
+                            spring: Spring {
+                                target_distance: 0.5,
+                                ..Default::default()
+                            },
+                        },
+                    ),
+                    (
+                        Point {
+                            position: offset + vec2(0.5, 0.5),
+                            mass: 1.0,
+                            ..Default::default()
+                        },
+                        Line {
+                            spring: Spring {
+                                target_distance: 0.5,
+                                ..Default::default()
+                            },
+                        },
+                    ),
+                    (
+                        Point {
+                            position: offset + vec2(0.0, 0.5),
+                            mass: 1.0,
+                            ..Default::default()
+                        },
+                        Line {
+                            spring: Spring {
+                                target_distance: 0.5,
+                                ..Default::default()
+                            },
+                        },
+                    ),
+                ],
+                vec![
+                    (
+                        [0, 2],
+                        Spring {
+                            target_distance: SQRT_2 / 2.0,
+                            ..Default::default()
+                        },
+                    ),
+                    (
+                        [1, 3],
+                        Spring {
+                            target_distance: SQRT_2 / 2.0,
+                            ..Default::default()
+                        },
+                    ),
+                ],
+                0.0,
+            ));
+        }
+    }
 
     simulation.update_keys();
 
