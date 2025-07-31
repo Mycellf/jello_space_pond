@@ -256,14 +256,15 @@ fn assemble_simulation() -> Simulation {
     );
 
     for x in 3..19 {
-        for y in -13..-5 {
+        for y in -21..-5 {
             let mut builder = SoftBodyBuilder::default()
                 .gas_force(5.0)
                 .friction(1.0)
                 .mass(0.5)
                 .base_angular_spring(Some(AngularSpring {
                     force_constant: 0.5,
-                    damping: 0.25,
+                    damping: 0.1,
+                    outwards: false,
                     ..Default::default()
                 }))
                 .base_spring({

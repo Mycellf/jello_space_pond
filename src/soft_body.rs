@@ -713,7 +713,7 @@ impl AngularSpring {
 
         let mut total_force = force + damping;
 
-        if !self.outwards && total_force > 0.0 || !self.inwards && total_force < 0.0 {
+        if !self.inwards && total_force > 0.0 || !self.outwards && total_force < 0.0 {
             total_force = 0.0;
         }
 
