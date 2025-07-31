@@ -389,6 +389,8 @@ pub struct Spring {
     pub target_distance: f32,
     pub force_constant: f32,
     pub damping: f32,
+    pub compression: bool,
+    pub tension: bool,
 }
 
 impl Spring {
@@ -430,7 +432,13 @@ impl Spring {
         let force = self.force_constant * (self.target_distance - distance);
         let damping = -normal_velocity * self.damping;
 
-        normalized_displacement * (force + damping)
+        let mut total_force = force + damping;
+
+        if !self.compression && total_force > 0.0 || !self.tension && total_force < 0.0 {
+            total_force = 0.0;
+        }
+
+        normalized_displacement * total_force
     }
 }
 
@@ -440,6 +448,8 @@ impl Default for Spring {
             target_distance: 1.0,
             force_constant: 50.0,
             damping: 10.0,
+            compression: true,
+            tension: true,
         }
     }
 }

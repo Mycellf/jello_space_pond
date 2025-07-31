@@ -179,6 +179,7 @@ fn assemble_simulation() -> Simulation {
                 [0, 2],
                 Spring {
                     target_distance: SQRT_2,
+                    compression: false,
                     ..Default::default()
                 },
             ),
@@ -186,6 +187,7 @@ fn assemble_simulation() -> Simulation {
                 [1, 3],
                 Spring {
                     target_distance: SQRT_2,
+                    compression: false,
                     ..Default::default()
                 },
             ),
@@ -193,6 +195,7 @@ fn assemble_simulation() -> Simulation {
                 [9, 3],
                 Spring {
                     target_distance: SQRT_2,
+                    compression: false,
                     ..Default::default()
                 },
             ),
@@ -200,6 +203,7 @@ fn assemble_simulation() -> Simulation {
                 [0, 4],
                 Spring {
                     target_distance: SQRT_2,
+                    compression: false,
                     ..Default::default()
                 },
             ),
@@ -207,6 +211,7 @@ fn assemble_simulation() -> Simulation {
                 [4, 6],
                 Spring {
                     target_distance: SQRT_2,
+                    compression: false,
                     ..Default::default()
                 },
             ),
@@ -214,6 +219,7 @@ fn assemble_simulation() -> Simulation {
                 [5, 9],
                 Spring {
                     target_distance: SQRT_2,
+                    compression: false,
                     ..Default::default()
                 },
             ),
@@ -221,6 +227,7 @@ fn assemble_simulation() -> Simulation {
                 [9, 7],
                 Spring {
                     target_distance: SQRT_2,
+                    compression: false,
                     ..Default::default()
                 },
             ),
@@ -228,6 +235,7 @@ fn assemble_simulation() -> Simulation {
                 [8, 6],
                 Spring {
                     target_distance: SQRT_2,
+                    compression: false,
                     ..Default::default()
                 },
             ),
@@ -416,6 +424,7 @@ fn assemble_simulation() -> Simulation {
                     target_distance: 1.0,
                     force_constant: 200.0,
                     damping: 20.0,
+                    ..Default::default()
                 },
             ),
             (
