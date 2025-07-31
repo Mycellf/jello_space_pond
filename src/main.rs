@@ -239,9 +239,27 @@ fn assemble_simulation() -> Simulation {
                     ..Default::default()
                 },
             ),
-            ([0, 3], Spring::default()),
-            ([9, 4], Spring::default()),
-            ([9, 6], Spring::default()),
+            (
+                [0, 3],
+                Spring {
+                    compression: false,
+                    ..Default::default()
+                },
+            ),
+            (
+                [9, 4],
+                Spring {
+                    compression: false,
+                    ..Default::default()
+                },
+            ),
+            (
+                [9, 6],
+                Spring {
+                    compression: false,
+                    ..Default::default()
+                },
+            ),
         ],
         10.0,
     ));
