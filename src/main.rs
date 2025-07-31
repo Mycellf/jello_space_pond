@@ -257,16 +257,22 @@ fn assemble_simulation() -> Simulation {
 
     for x in 3..19 {
         for y in -13..-5 {
-            simulation.soft_bodies.insert(
-                SoftBodyBuilder::default()
-                    .gas_force(10.0)
-                    .offset(x as f32 * 2.0, y as f32 * 2.0)
-                    .point(0.0, 0.0)
-                    .point(1.0, 0.0)
-                    .point(1.0, 1.0)
-                    .point(0.0, 1.0)
-                    .build(),
-            );
+            let mut builder = SoftBodyBuilder::default()
+                .gas_force(10.0)
+                .base_spring(Spring {
+                    force_constant: 100.0,
+                    ..Default::default()
+                })
+                .spring_scale(0.5)
+                .offset(x as f32 * 2.0, y as f32 * 2.0);
+
+            for i in 0..16 {
+                let angle = i as f32 / 16.0 * TAU;
+
+                builder = builder.point(angle.cos(), angle.sin())
+            }
+
+            simulation.soft_bodies.insert(builder.build());
         }
     }
 
