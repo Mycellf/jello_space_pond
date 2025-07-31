@@ -15,7 +15,7 @@ use macroquad::{
 
 use crate::{
     simulation::Simulation,
-    soft_body::{Line, Point, SoftBody, Spring},
+    soft_body::{SoftBodyBuilder, Spring},
 };
 
 const START_IN_FULLSCREEN: bool = true;
@@ -39,6 +39,7 @@ async fn main() {
 
     let mut fullscreen = START_IN_FULLSCREEN;
     let mut debug = false;
+    let mut running = true;
 
     let ticks_per_second = 120.0;
 
@@ -57,15 +58,21 @@ async fn main() {
             debug ^= true;
         }
 
-        tick_time += macroquad::time::get_frame_time() * ticks_per_second;
-
-        for _ in 0..maximum_ticks_per_frame.min(tick_time.floor() as usize) {
-            simulation.update(1.0 / ticks_per_second);
-
-            tick_time -= 1.0;
+        if input::is_key_pressed(KeyCode::Space) {
+            running ^= true;
         }
 
-        tick_time = tick_time.min(1.0);
+        if running {
+            tick_time += macroquad::time::get_frame_time() * ticks_per_second;
+
+            for _ in 0..maximum_ticks_per_frame.min(tick_time.floor() as usize) {
+                simulation.update(1.0 / ticks_per_second);
+
+                tick_time -= 1.0;
+            }
+
+            tick_time = tick_time.min(1.0);
+        }
 
         let mut input = vec2(0.0, 0.0);
 
@@ -105,414 +112,161 @@ async fn main() {
 fn assemble_simulation() -> Simulation {
     let mut simulation = Simulation::new();
 
-    simulation.soft_bodies.insert(SoftBody::new(
-        vec![
-            (
-                Point {
-                    position: vec2(0.0, -1.0),
-                    mass: 1.0,
-                    ..Default::default()
-                },
-                Line::default(),
-            ),
-            (
-                Point {
-                    position: vec2(-0.5, -1.0),
-                    mass: 1.0,
-                    ..Default::default()
-                },
-                Line::default(),
-            ),
-            (
-                Point {
-                    position: vec2(-0.5, -1.5),
-                    mass: 1.0,
-                    ..Default::default()
-                },
-                Line::default(),
-            ),
-            (
-                Point {
-                    position: vec2(0.0, -1.5),
-                    mass: 1.0,
-                    ..Default::default()
-                },
-                Line::default(),
-            ),
-            (
-                Point {
-                    position: vec2(0.5, -1.5),
-                    mass: 1.0,
-                    ..Default::default()
-                },
-                Line::default(),
-            ),
-            (
-                Point {
-                    position: vec2(1.0, -1.5),
-                    mass: 1.0,
-                    ..Default::default()
-                },
-                Line::default(),
-            ),
-            (
-                Point {
-                    position: vec2(1.0, -1.0),
-                    mass: 1.0,
-                    ..Default::default()
-                },
-                Line::default(),
-            ),
-            (
-                Point {
-                    position: vec2(1.0, -0.5),
-                    mass: 1.0,
-                    ..Default::default()
-                },
-                Line::default(),
-            ),
-            (
-                Point {
-                    position: vec2(0.5, -0.5),
-                    mass: 1.0,
-                    ..Default::default()
-                },
-                Line::default(),
-            ),
-            (
-                Point {
-                    position: vec2(0.5, -1.0),
-                    mass: 1.0,
-                    ..Default::default()
-                },
-                Line::default(),
-            ),
-        ],
-        vec![
-            (
-                [0, 2],
-                Spring {
-                    target_distance: SQRT_2,
-                    compression: false,
-                    ..Default::default()
-                },
-            ),
-            (
-                [1, 3],
-                Spring {
-                    target_distance: SQRT_2,
-                    compression: false,
-                    ..Default::default()
-                },
-            ),
-            (
-                [9, 3],
-                Spring {
-                    target_distance: SQRT_2,
-                    compression: false,
-                    ..Default::default()
-                },
-            ),
-            (
-                [0, 4],
-                Spring {
-                    target_distance: SQRT_2,
-                    compression: false,
-                    ..Default::default()
-                },
-            ),
-            (
-                [4, 6],
-                Spring {
-                    target_distance: SQRT_2,
-                    compression: false,
-                    ..Default::default()
-                },
-            ),
-            (
-                [5, 9],
-                Spring {
-                    target_distance: SQRT_2,
-                    compression: false,
-                    ..Default::default()
-                },
-            ),
-            (
-                [9, 7],
-                Spring {
-                    target_distance: SQRT_2,
-                    compression: false,
-                    ..Default::default()
-                },
-            ),
-            (
-                [8, 6],
-                Spring {
-                    target_distance: SQRT_2,
-                    compression: false,
-                    ..Default::default()
-                },
-            ),
-            (
-                [0, 3],
-                Spring {
-                    compression: false,
-                    ..Default::default()
-                },
-            ),
-            (
-                [9, 4],
-                Spring {
-                    compression: false,
-                    ..Default::default()
-                },
-            ),
-            (
-                [9, 6],
-                Spring {
-                    compression: false,
-                    ..Default::default()
-                },
-            ),
-        ],
-        15.0,
-    ));
+    let diagonal_spring = Spring {
+        target_distance: SQRT_2,
+        compression: false,
+        ..Default::default()
+    };
 
-    simulation.soft_bodies.insert(SoftBody::new(
-        vec![
-            (
-                Point {
-                    position: vec2(0.0, 0.5),
-                    mass: 5.0,
-                    ..Default::default()
-                },
-                Line::default(),
-            ),
-            (
-                Point {
-                    position: vec2(0.1, 0.5),
-                    mass: 5.0,
-                    ..Default::default()
-                },
-                Line::default(),
-            ),
-            (
-                Point {
-                    position: vec2(1.0, 1.5),
-                    mass: 5.0,
-                    ..Default::default()
-                },
-                Line::default(),
-            ),
-            (
-                Point {
-                    position: vec2(0.0, 1.5),
-                    mass: 5.0,
-                    ..Default::default()
-                },
-                Line::default(),
-            ),
-        ],
-        vec![
-            (
-                [0, 2],
-                Spring {
-                    target_distance: SQRT_2,
-                    ..Default::default()
-                },
-            ),
-            (
-                [1, 3],
-                Spring {
-                    target_distance: SQRT_2,
-                    ..Default::default()
-                },
-            ),
-        ],
-        0.0,
-    ));
+    let orthogonal_spring = Spring {
+        compression: false,
+        ..Default::default()
+    };
 
-    simulation.soft_bodies.insert(SoftBody::new(
-        vec![
-            (
-                Point {
-                    position: vec2(2.0, -1.0),
-                    mass: 1.0,
-                    ..Default::default()
-                },
-                Line::default(),
-            ),
-            (
-                Point {
-                    position: vec2(3.0, -1.0),
-                    mass: 1.0,
-                    ..Default::default()
-                },
-                Line::default(),
-            ),
-            (
-                Point {
-                    position: vec2(3.0, 0.0),
-                    mass: 1.0,
-                    ..Default::default()
-                },
-                Line::default(),
-            ),
-            (
-                Point {
-                    position: vec2(2.0, 0.0),
-                    mass: 1.0,
-                    ..Default::default()
-                },
-                Line::default(),
-            ),
-        ],
-        vec![
-            (
-                [0, 2],
-                Spring {
-                    target_distance: SQRT_2,
-                    ..Default::default()
-                },
-            ),
-            (
-                [1, 3],
-                Spring {
-                    target_distance: SQRT_2,
-                    ..Default::default()
-                },
-            ),
-        ],
-        0.0,
-    ));
+    simulation.soft_bodies.insert(
+        SoftBodyBuilder::default()
+            .gas_force(15.0)
+            .offset(-0.5, -1.5)
+            .spring_scale(2.0)
+            .point(0.5, 0.5)
+            .with_internal_spring_start(0)
+            .with_internal_spring_start(3)
+            .with_internal_spring_start(8)
+            .point(0.0, 0.5)
+            .with_internal_spring_start(1)
+            .point(0.0, 0.0)
+            .with_internal_spring_end(0, diagonal_spring)
+            .point(0.5, 0.0)
+            .with_internal_spring_end(1, diagonal_spring)
+            .with_internal_spring_end(8, orthogonal_spring)
+            .with_internal_spring_start(2)
+            .point(1.0, 0.0)
+            .with_internal_spring_end(3, diagonal_spring)
+            .with_internal_spring_start(4)
+            .with_internal_spring_start(9)
+            .point(1.5, 0.0)
+            .with_internal_spring_start(5)
+            .with_internal_spring_start(10)
+            .point(1.5, 0.5)
+            .with_internal_spring_end(4, diagonal_spring)
+            .with_internal_spring_start(7)
+            .with_internal_spring_start(11)
+            .point(1.5, 1.0)
+            .with_internal_spring_start(6)
+            .point(1.0, 1.0)
+            .with_internal_spring_end(7, diagonal_spring)
+            .point(1.0, 0.5)
+            .with_internal_spring_end(2, diagonal_spring)
+            .with_internal_spring_end(5, diagonal_spring)
+            .with_internal_spring_end(6, diagonal_spring)
+            .with_internal_spring_end(9, orthogonal_spring)
+            .with_internal_spring_end(10, diagonal_spring)
+            .with_internal_spring_end(11, orthogonal_spring)
+            .build(),
+    );
 
-    simulation.soft_bodies.insert(SoftBody::new(
-        vec![
-            (
-                Point {
-                    position: vec2(-5.0, 3.0),
-                    velocity: vec2(2.0, -1.5),
-                    mass: 10.0,
-                    ..Default::default()
-                },
-                Line {
-                    spring: Spring {
-                        force_constant: 100.0,
-                        target_distance: 2.0,
-                        ..Default::default()
-                    },
-                },
-            ),
-            (
-                Point {
-                    position: vec2(-4.0, 3.0),
-                    velocity: vec2(2.0, -1.5),
-                    mass: 10.0,
-                    ..Default::default()
-                },
-                Line {
-                    spring: Spring {
-                        force_constant: 100.0,
-                        target_distance: 2.0,
-                        ..Default::default()
-                    },
-                },
-            ),
-            (
-                Point {
-                    position: vec2(-4.0, 4.0),
-                    velocity: vec2(2.0, -1.5),
-                    mass: 10.0,
-                    ..Default::default()
-                },
-                Line {
-                    spring: Spring {
-                        force_constant: 100.0,
-                        target_distance: 0.25,
-                        ..Default::default()
-                    },
-                },
-            ),
-            (
-                Point {
-                    position: vec2(-5.0, 4.0),
-                    velocity: vec2(2.0, -1.5),
-                    mass: 10.0,
-                    ..Default::default()
-                },
-                Line {
-                    spring: Spring {
-                        force_constant: 100.0,
-                        target_distance: 0.25,
-                        ..Default::default()
-                    },
-                },
-            ),
-        ],
-        vec![
-            (
-                [0, 2],
+    let diagonal_spring = Spring {
+        target_distance: SQRT_2,
+        ..Default::default()
+    };
+
+    simulation.soft_bodies.insert({
+        let mut soft_body = SoftBodyBuilder::default()
+            .mass(5.0)
+            .offset(0.0, 0.5)
+            .point(0.0, 0.0)
+            .with_internal_spring_start(0)
+            .point(1.0, 0.0)
+            .with_internal_spring_start(1)
+            .point(1.0, 1.0)
+            .with_internal_spring_end(0, diagonal_spring)
+            .point(0.0, 1.0)
+            .with_internal_spring_end(1, diagonal_spring)
+            .build();
+
+        soft_body.shape[1].0.position.x -= 0.9;
+
+        soft_body
+    });
+
+    simulation.soft_bodies.insert(
+        SoftBodyBuilder::default()
+            .offset(2.0, -1.0)
+            .point(0.0, 0.0)
+            .with_internal_spring_start(0)
+            .point(1.0, 0.0)
+            .with_internal_spring_start(1)
+            .point(1.0, 1.0)
+            .with_internal_spring_end(0, diagonal_spring)
+            .point(0.0, 1.0)
+            .with_internal_spring_end(1, diagonal_spring)
+            .build(),
+    );
+
+    simulation.soft_bodies.insert(
+        SoftBodyBuilder::default()
+            .gas_force(50.0)
+            .mass(10.0)
+            .velocity(2.0, -1.5)
+            .offset(-5.0, 3.0)
+            .point(0.0, 0.0)
+            .with_internal_spring_start(0)
+            .with_spring(Spring {
+                force_constant: 100.0,
+                target_distance: 2.0,
+                ..Default::default()
+            })
+            .point(1.0, 0.0)
+            .with_internal_spring_start(1)
+            .with_spring(Spring {
+                force_constant: 100.0,
+                target_distance: 2.0,
+                ..Default::default()
+            })
+            .point(1.0, 1.0)
+            .with_internal_spring_end(
+                0,
                 Spring {
                     target_distance: 1.0,
                     force_constant: 200.0,
                     damping: 20.0,
                     ..Default::default()
                 },
-            ),
-            (
-                [1, 3],
+            )
+            .with_spring(Spring {
+                force_constant: 100.0,
+                target_distance: 0.25,
+                ..Default::default()
+            })
+            .point(0.0, 1.0)
+            .with_internal_spring_end(
+                1,
                 Spring {
                     target_distance: 4.0,
                     force_constant: 200.0,
                     ..Default::default()
                 },
-            ),
-        ],
-        50.0,
-    ));
+            )
+            .with_spring(Spring {
+                force_constant: 100.0,
+                target_distance: 0.25,
+                ..Default::default()
+            })
+            .build(),
+    );
 
     for x in 3..19 {
         for y in -13..-5 {
-            let offset = vec2(x as f32, y as f32) * 2.0;
-
-            simulation.soft_bodies.insert(SoftBody::new(
-                vec![
-                    (
-                        Point {
-                            position: offset + vec2(0.0, 0.0),
-                            mass: 1.0,
-                            ..Default::default()
-                        },
-                        Line::default(),
-                    ),
-                    (
-                        Point {
-                            position: offset + vec2(1.0, 0.0),
-                            mass: 1.0,
-                            ..Default::default()
-                        },
-                        Line::default(),
-                    ),
-                    (
-                        Point {
-                            position: offset + vec2(1.0, 1.0),
-                            mass: 1.0,
-                            ..Default::default()
-                        },
-                        Line::default(),
-                    ),
-                    (
-                        Point {
-                            position: offset + vec2(0.0, 1.0),
-                            mass: 1.0,
-                            ..Default::default()
-                        },
-                        Line::default(),
-                    ),
-                ],
-                vec![],
-                10.0,
-            ));
+            simulation.soft_bodies.insert(
+                SoftBodyBuilder::default()
+                    .gas_force(10.0)
+                    .offset(x as f32 * 2.0, y as f32 * 2.0)
+                    .point(0.0, 0.0)
+                    .point(1.0, 0.0)
+                    .point(1.0, 1.0)
+                    .point(0.0, 1.0)
+                    .build(),
+            );
         }
     }
 

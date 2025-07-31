@@ -3,7 +3,7 @@ use std::sync::{LazyLock, Mutex};
 use earcut::Earcut;
 use macroquad::{
     color::{Color, colors},
-    math::Vec2,
+    math::{Vec2, vec2},
     models::{self, Mesh},
     shapes,
     ui::Vertex,
@@ -389,7 +389,7 @@ impl SoftBody {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug)]
 pub struct Point {
     pub position: Vec2,
     pub velocity: Vec2,
@@ -409,6 +409,17 @@ impl Point {
 
     pub fn momentum(&self) -> Vec2 {
         self.velocity * self.mass
+    }
+}
+
+impl Default for Point {
+    fn default() -> Self {
+        Self {
+            position: Vec2::ZERO,
+            velocity: Vec2::ZERO,
+            impulse: Vec2::ZERO,
+            mass: 1.0,
+        }
     }
 }
 
@@ -523,4 +534,218 @@ impl BoundingBox {
             && other.min_corner.x <= self.max_corner().x
             && other.min_corner.y <= self.max_corner().y
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct SoftBodyBuilder {
+    pub soft_body: SoftBody,
+    pub internal_springs: Vec<SpringBuilder>,
+
+    pub base_point: Point,
+    pub base_line: Line,
+
+    pub subdivisions: usize,
+
+    pub last_spring_specified: bool,
+    pub spring_scale: f32,
+}
+
+impl Default for SoftBodyBuilder {
+    fn default() -> Self {
+        Self {
+            soft_body: SoftBody {
+                shape: Vec::new(),
+                internal_springs: Vec::new(),
+                bounding_box: BoundingBox::default(),
+                gas_force: 0.0,
+                pressure: 0.0,
+            },
+            internal_springs: Vec::new(),
+
+            base_point: Point::default(),
+            base_line: Line::default(),
+
+            subdivisions: 0,
+
+            last_spring_specified: false,
+            spring_scale: 1.0,
+        }
+    }
+}
+
+impl SoftBodyBuilder {
+    pub fn build(mut self) -> SoftBody {
+        assert!(self.soft_body.shape.len() >= 3, "Not enough points");
+
+        let first_position = self.soft_body.shape.first().unwrap().0.position;
+        self.add_subdivisions(first_position);
+        self.fix_last_spring(first_position);
+
+        for (id, internal_spring) in self.internal_springs.into_iter().enumerate() {
+            match internal_spring {
+                SpringBuilder::Incomplete(_) => panic!("Spring {id} is incomplete"),
+                SpringBuilder::Unused | SpringBuilder::Complete => (),
+            }
+        }
+
+        self.soft_body
+    }
+
+    pub fn point(self, x: f32, y: f32) -> Self {
+        self.point_ex(vec2(x, y))
+    }
+
+    pub fn point_ex(mut self, point: Vec2) -> Self {
+        self.add_subdivisions(point + self.base_point.position);
+
+        self.point_inner(point + self.base_point.position);
+        self
+    }
+
+    fn point_inner(&mut self, point: Vec2) {
+        self.fix_last_spring(point);
+
+        self.soft_body.shape.push((
+            Point {
+                position: point,
+                ..self.base_point
+            },
+            self.base_line,
+        ));
+        self.last_spring_specified = false;
+    }
+
+    fn add_subdivisions(&mut self, point: Vec2) {
+        if self.subdivisions > 0 {
+            if let Some(&(Point { position, .. }, _)) = self.soft_body.shape.last() {
+                let segments = self.subdivisions + 1;
+
+                for i in 1..segments {
+                    self.point_inner(position.lerp(point, i as f32 / segments as f32));
+                }
+            }
+        }
+    }
+
+    fn fix_last_spring(&mut self, point: Vec2) {
+        if !self.last_spring_specified {
+            if let Some(&mut (Point { position, .. }, Line { ref mut spring, .. })) =
+                self.soft_body.shape.last_mut()
+            {
+                spring.target_distance = position.distance(point) * self.spring_scale;
+            }
+        }
+    }
+
+    pub fn with_spring(mut self, spring: Spring) -> Self {
+        self.soft_body.shape.last_mut().unwrap().1.spring = spring;
+        self.last_spring_specified = true;
+        self
+    }
+
+    pub fn with_spring_length(mut self, length: f32) -> Self {
+        self.soft_body
+            .shape
+            .last_mut()
+            .unwrap()
+            .1
+            .spring
+            .target_distance = length;
+        self.last_spring_specified = true;
+        self
+    }
+
+    pub fn base_spring(mut self, spring: Spring) -> Self {
+        self.base_line.spring = spring;
+        self
+    }
+
+    pub fn with_internal_spring_start(mut self, id: usize) -> Self {
+        while self.internal_springs.len() <= id {
+            self.internal_springs.push(SpringBuilder::Unused);
+        }
+
+        match self.internal_springs[id] {
+            SpringBuilder::Unused => {
+                self.internal_springs[id] =
+                    SpringBuilder::Incomplete(self.soft_body.shape.len() - 1);
+            }
+            SpringBuilder::Incomplete(_) | SpringBuilder::Complete => {
+                panic!("The spring {id} already exists");
+            }
+        }
+
+        self
+    }
+
+    pub fn with_internal_spring_end(mut self, id: usize, spring: Spring) -> Self {
+        match self.internal_springs.get(id) {
+            Some(&SpringBuilder::Incomplete(start_index)) => {
+                self.internal_springs[id] = SpringBuilder::Complete;
+                let end_index = self.soft_body.shape.len() - 1;
+
+                self.soft_body
+                    .internal_springs
+                    .push(([start_index, end_index], spring));
+            }
+            Some(SpringBuilder::Complete) => {
+                panic!("The spring {id} is already finished");
+            }
+            Some(SpringBuilder::Unused) | None => {
+                panic!("The spring {id} does not exist");
+            }
+        }
+
+        self
+    }
+
+    pub fn base_point(mut self, point: Point) -> Self {
+        self.base_point = point;
+        self
+    }
+
+    pub fn mass(mut self, mass: f32) -> Self {
+        self.base_point.mass = mass;
+        self
+    }
+
+    pub fn velocity(self, x: f32, y: f32) -> Self {
+        self.velocity_ex(vec2(x, y))
+    }
+
+    pub fn velocity_ex(mut self, velocity: Vec2) -> Self {
+        self.base_point.velocity = velocity;
+        self
+    }
+
+    pub fn offset(self, x: f32, y: f32) -> Self {
+        self.offset_ex(vec2(x, y))
+    }
+
+    pub fn offset_ex(mut self, offset: Vec2) -> Self {
+        self.base_point.position = offset;
+        self
+    }
+
+    pub fn subdivisions(mut self, subdivisions: usize) -> Self {
+        self.subdivisions = subdivisions;
+        self
+    }
+
+    pub fn gas_force(mut self, gas_force: f32) -> Self {
+        self.soft_body.gas_force = gas_force;
+        self
+    }
+
+    pub fn spring_scale(mut self, spring_scale: f32) -> Self {
+        self.spring_scale = spring_scale;
+        self
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum SpringBuilder {
+    Unused,
+    Incomplete(usize),
+    Complete,
 }
