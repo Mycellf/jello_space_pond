@@ -2,7 +2,7 @@ pub mod simulation;
 pub mod soft_body;
 pub mod utils;
 
-use std::f32::consts::SQRT_2;
+use std::f32::consts::{SQRT_2, TAU};
 
 use macroquad::{
     camera::{self, Camera2D},
