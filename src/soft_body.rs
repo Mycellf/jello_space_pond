@@ -265,6 +265,26 @@ impl SoftBody {
 
         collided
     }
+
+    /// CREDIT: chmike: <https://stackoverflow.com/a/717367>
+    pub fn area(&self) -> f32 {
+        let mut double_area = 0.0;
+
+        for i in 1..self.shape.len() - 1 {
+            double_area += self.shape[i].0.position.x
+                * (self.shape[i + 1].0.position.y - self.shape[i - 1].0.position.y);
+        }
+
+        // i == self.shape.len() - 1
+        double_area += self.shape[self.shape.len() - 1].0.position.x
+            * (self.shape[0].0.position.y - self.shape[self.shape.len() - 2].0.position.y);
+
+        // i == self.shape.len()
+        double_area += self.shape[0].0.position.x
+            * (self.shape[1].0.position.y - self.shape[self.shape.len() - 1].0.position.y);
+
+        double_area / 2.0
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default)]

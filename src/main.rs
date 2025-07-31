@@ -418,6 +418,8 @@ async fn main() {
                 utils::draw_line(point_a.position, point_b.position, 0.05, colors::BLUE);
 
                 shapes::draw_circle(closest_point.x, closest_point.y, 0.05, colors::BLUE);
+
+                println!("{}", soft_body.area());
             }
         }
 

@@ -41,13 +41,10 @@ impl Simulation {
                     .get_disjoint_mut([first_key, second_key])
                     .unwrap();
 
-                if !first.bounding_box.intersects_other(&second.bounding_box) {
-                    // The objects do not intersect
-                    continue;
+                if first.bounding_box.intersects_other(&second.bounding_box) {
+                    first.check_points_against_other_one_sided(second);
+                    second.check_points_against_other_one_sided(first);
                 }
-
-                first.check_points_against_other_one_sided(second);
-                second.check_points_against_other_one_sided(first);
             }
         }
     }
