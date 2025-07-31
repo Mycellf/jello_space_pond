@@ -7,14 +7,31 @@ use macroquad::{
 use crate::utils;
 
 /// Points should always be oriented counter clockwise
+#[non_exhaustive]
 #[derive(Clone, Debug)]
 pub struct SoftBody {
     pub shape: Vec<(Point, Line)>,
     pub internal_springs: Vec<([usize; 2], Spring)>,
     pub bounding_box: BoundingBox,
+    pub gas_force: f32,
+    pub pressure: f32,
 }
 
 impl SoftBody {
+    pub fn new(
+        shape: Vec<(Point, Line)>,
+        internal_springs: Vec<([usize; 2], Spring)>,
+        gas_force: f32,
+    ) -> Self {
+        Self {
+            shape,
+            internal_springs,
+            bounding_box: BoundingBox::default(),
+            gas_force,
+            pressure: 0.0,
+        }
+    }
+
     pub fn draw(&self) {
         if self.shape.len() > 1 {
             for i in 0..self.shape.len() {
@@ -33,6 +50,8 @@ impl SoftBody {
     }
 
     pub fn apply_impulse_and_velocity(&mut self, dt: f32) {
+        self.add_pressure_impulse(dt);
+
         if self.shape.len() > 1 {
             for i in 0..self.shape.len() {
                 let (point_a, line, point_b) = self.get_line_mut(i).unwrap();
@@ -52,6 +71,30 @@ impl SoftBody {
         }
 
         self.update_bounding_box();
+    }
+
+    pub fn add_pressure_impulse(&mut self, dt: f32) {
+        if self.gas_force <= f32::EPSILON {
+            self.pressure = 0.0;
+
+            return;
+        }
+
+        let pressure = self.gas_force / self.area();
+
+        self.pressure = pressure;
+
+        for i in 0..self.shape.len() {
+            let (point_a, _, point_b) = self.get_line_mut(i).unwrap();
+
+            // Magnitude is proportional to the length of the edge
+            let force_direction = (point_a.position - point_b.position).perp();
+
+            let pressure_force = force_direction * pressure;
+
+            point_a.impulse += pressure_force * dt / 2.0;
+            point_b.impulse += pressure_force * dt / 2.0;
+        }
     }
 
     pub fn update_bounding_box(&mut self) {

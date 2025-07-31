@@ -32,8 +32,8 @@ fn config() -> Conf {
 async fn main() {
     let mut simulation = Simulation::new();
 
-    simulation.soft_bodies.insert(SoftBody {
-        shape: vec![
+    simulation.soft_bodies.insert(SoftBody::new(
+        vec![
             (
                 Point {
                     position: vec2(0.0, -1.0),
@@ -115,7 +115,7 @@ async fn main() {
                 Line::default(),
             ),
         ],
-        internal_springs: vec![
+        vec![
             (
                 [0, 2],
                 Spring {
@@ -176,11 +176,11 @@ async fn main() {
             ([9, 4], Spring::default()),
             ([9, 6], Spring::default()),
         ],
-        bounding_box: Default::default(),
-    });
+        10.0,
+    ));
 
-    simulation.soft_bodies.insert(SoftBody {
-        shape: vec![
+    simulation.soft_bodies.insert(SoftBody::new(
+        vec![
             (
                 Point {
                     position: vec2(0.0, 0.5),
@@ -214,7 +214,7 @@ async fn main() {
                 Line::default(),
             ),
         ],
-        internal_springs: vec![
+        vec![
             (
                 [0, 2],
                 Spring {
@@ -230,11 +230,11 @@ async fn main() {
                 },
             ),
         ],
-        bounding_box: Default::default(),
-    });
+        0.0,
+    ));
 
-    simulation.soft_bodies.insert(SoftBody {
-        shape: vec![
+    simulation.soft_bodies.insert(SoftBody::new(
+        vec![
             (
                 Point {
                     position: vec2(2.0, -1.0),
@@ -268,7 +268,7 @@ async fn main() {
                 Line::default(),
             ),
         ],
-        internal_springs: vec![
+        vec![
             (
                 [0, 2],
                 Spring {
@@ -284,11 +284,11 @@ async fn main() {
                 },
             ),
         ],
-        bounding_box: Default::default(),
-    });
+        0.0,
+    ));
 
-    simulation.soft_bodies.insert(SoftBody {
-        shape: vec![
+    simulation.soft_bodies.insert(SoftBody::new(
+        vec![
             (
                 Point {
                     position: vec2(-5.0, 3.0),
@@ -298,6 +298,7 @@ async fn main() {
                 },
                 Line {
                     spring: Spring {
+                        force_constant: 100.0,
                         target_distance: 2.0,
                         ..Default::default()
                     },
@@ -312,6 +313,7 @@ async fn main() {
                 },
                 Line {
                     spring: Spring {
+                        force_constant: 100.0,
                         target_distance: 2.0,
                         ..Default::default()
                     },
@@ -326,6 +328,7 @@ async fn main() {
                 },
                 Line {
                     spring: Spring {
+                        force_constant: 100.0,
                         target_distance: 0.25,
                         ..Default::default()
                     },
@@ -340,18 +343,19 @@ async fn main() {
                 },
                 Line {
                     spring: Spring {
+                        force_constant: 100.0,
                         target_distance: 0.25,
                         ..Default::default()
                     },
                 },
             ),
         ],
-        internal_springs: vec![
+        vec![
             (
                 [0, 2],
                 Spring {
                     target_distance: 1.0,
-                    force_constant: 100.0,
+                    force_constant: 200.0,
                     damping: 20.0,
                 },
             ),
@@ -359,13 +363,13 @@ async fn main() {
                 [1, 3],
                 Spring {
                     target_distance: 4.0,
-                    force_constant: 100.0,
+                    force_constant: 200.0,
                     ..Default::default()
                 },
             ),
         ],
-        bounding_box: Default::default(),
-    });
+        50.0,
+    ));
 
     simulation.update_keys();
 
