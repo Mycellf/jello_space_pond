@@ -289,11 +289,11 @@ impl SoftBody {
             let (line, closest_point, _, interpolation) =
                 other.closest_line_to_point(point.position);
 
-            other.check_point_against_line(point, line, closest_point, interpolation);
+            other.check_other_point_against_line(point, line, closest_point, interpolation);
 
             if interpolation <= f32::EPSILON {
                 // Wedged into corner
-                other.check_point_against_line(
+                other.check_other_point_against_line(
                     point,
                     if line == 0 {
                         other.shape.len() - 1
@@ -305,7 +305,7 @@ impl SoftBody {
                 )
             } else if interpolation >= 1.0 - f32::EPSILON {
                 // Wedged into corner
-                other.check_point_against_line(
+                other.check_other_point_against_line(
                     point,
                     if line >= other.shape.len() - 1 {
                         0
@@ -323,7 +323,7 @@ impl SoftBody {
         collided
     }
 
-    pub fn check_point_against_line(
+    pub fn check_other_point_against_line(
         &mut self,
         point: &mut Point,
         line: usize,
@@ -332,6 +332,33 @@ impl SoftBody {
     ) {
         let (point_a, _, point_b) = self.get_line_mut(line).unwrap();
 
+        Self::check_point_against_line(point_a, point_b, point, closest_point, interpolation);
+    }
+
+    pub fn check_own_point_against_line(
+        &mut self,
+        point: usize,
+        line: usize,
+        closest_point: Vec2,
+        interpolation: f32,
+    ) {
+        let length = self.shape.len();
+
+        let [(point, _), (point_a, _), (point_b, _)] = self
+            .shape
+            .get_disjoint_mut([point, line, if line < length - 1 { line + 1 } else { 0 }])
+            .unwrap();
+
+        Self::check_point_against_line(point_a, point_b, point, closest_point, interpolation);
+    }
+
+    pub fn check_point_against_line(
+        point_a: &mut Point,
+        point_b: &mut Point,
+        point: &mut Point,
+        closest_point: Vec2,
+        interpolation: f32,
+    ) {
         // Will move the points just the right distance so the line intersects the new position
         let interpolation_scale = 1.0 / (2.0 * interpolation.powi(2) - 2.0 * interpolation + 1.0);
 
