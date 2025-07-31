@@ -1,7 +1,12 @@
+use std::sync::{LazyLock, Mutex};
+
+use earcut::Earcut;
 use macroquad::{
     color::{Color, colors},
     math::Vec2,
+    models::{self, Mesh},
     shapes,
+    ui::Vertex,
 };
 
 use crate::utils;
@@ -32,7 +37,36 @@ impl SoftBody {
         }
     }
 
-    pub fn draw(&self) {
+    /// CREDIT: tirithen <https://github.com/not-fl3/macroquad/issues/174#issuecomment-817203498>
+    /// (made to work with convex polygons via earcut)
+    pub fn fill_color(&self, color: Color) {
+        static EARCUT: LazyLock<Mutex<Earcut<f32>>> = LazyLock::new(|| Mutex::new(Earcut::new()));
+
+        let mut vertices = Vec::with_capacity(self.shape.len() + 2);
+        let mut indices = Vec::with_capacity(self.shape.len() * 3);
+
+        for (Point { position, .. }, _) in self.shape.iter() {
+            let vertex = Vertex::new(position.x, position.y, 0.0, 0.0, 0.0, color);
+
+            vertices.push(vertex);
+        }
+
+        EARCUT.lock().unwrap().earcut(
+            self.shape.iter().map(|(point, _)| point.position.into()),
+            &[],
+            &mut indices,
+        );
+
+        let mesh = Mesh {
+            vertices,
+            indices,
+            texture: None,
+        };
+
+        models::draw_mesh(&mesh);
+    }
+
+    pub fn draw_springs(&self) {
         if self.shape.len() > 1 {
             for i in 0..self.shape.len() {
                 let (point_a, line, point_b) = self.get_line(i).unwrap();

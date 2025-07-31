@@ -60,6 +60,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "earcut"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d565e947a723df9f069393f8c3e723cf386ff9a052443339235ae2a4d9ffee3f"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -134,6 +143,7 @@ dependencies = [
 name = "jello_space_pond"
 version = "0.1.0"
 dependencies = [
+ "earcut",
  "macroquad",
  "slotmap",
 ]

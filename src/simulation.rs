@@ -1,3 +1,4 @@
+use macroquad::color::colors;
 use slotmap::{SlotMap, new_key_type};
 
 use crate::soft_body::SoftBody;
@@ -21,7 +22,8 @@ impl Simulation {
 
     pub fn draw(&self) {
         for (_, soft_body) in &self.soft_bodies {
-            soft_body.draw();
+            soft_body.fill_color(colors::WHITE);
+            soft_body.draw_springs();
         }
     }
 
