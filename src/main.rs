@@ -30,6 +30,67 @@ fn config() -> Conf {
 
 #[macroquad::main(config)]
 async fn main() {
+    let mut simulation = assemble_simulation();
+
+    let mut camera = Camera2D {
+        zoom: -2.0 / Vec2::splat(10.0),
+        ..Default::default()
+    };
+
+    let mut fullscreen = START_IN_FULLSCREEN;
+
+    let ticks_per_second = 120.0;
+
+    let minimum_fast_framerate: f32 = 15.0;
+    let maximum_ticks_per_frame = (ticks_per_second / minimum_fast_framerate).ceil() as usize;
+
+    let mut tick_time = 0.0;
+
+    loop {
+        if input::is_key_pressed(KeyCode::F11) {
+            fullscreen ^= true;
+            macroquad::window::set_fullscreen(fullscreen);
+        }
+
+        tick_time += macroquad::time::get_frame_time() * ticks_per_second;
+
+        for _ in 0..maximum_ticks_per_frame.min(tick_time.floor() as usize) {
+            simulation.update(1.0 / ticks_per_second);
+
+            tick_time -= 1.0;
+        }
+
+        tick_time = tick_time.min(1.0);
+
+        utils::update_camera_aspect_ratio(&mut camera);
+        camera::set_camera(&camera);
+
+        simulation.draw();
+
+        let mouse_position = utils::mouse_position(&camera);
+
+        for (_, soft_body) in &simulation.soft_bodies {
+            if soft_body.contains_point(mouse_position) {
+                soft_body.bounding_box.draw();
+
+                let (closest_line, closest_point, _, _) =
+                    soft_body.closest_line_to_point(mouse_position);
+
+                let (point_a, _, point_b) = soft_body.get_line(closest_line).unwrap();
+
+                utils::draw_line(point_a.position, point_b.position, 0.05, colors::BLUE);
+
+                shapes::draw_circle(closest_point.x, closest_point.y, 0.05, colors::BLUE);
+
+                println!("{}", soft_body.area());
+            }
+        }
+
+        window::next_frame().await;
+    }
+}
+
+fn assemble_simulation() -> Simulation {
     let mut simulation = Simulation::new();
 
     simulation.soft_bodies.insert(SoftBody::new(
@@ -373,60 +434,5 @@ async fn main() {
 
     simulation.update_keys();
 
-    let mut camera = Camera2D {
-        zoom: -2.0 / Vec2::splat(10.0),
-        ..Default::default()
-    };
-
-    let mut fullscreen = START_IN_FULLSCREEN;
-
-    let ticks_per_second = 120.0;
-
-    let minimum_fast_framerate: f32 = 15.0;
-    let maximum_ticks_per_frame = (ticks_per_second / minimum_fast_framerate).ceil() as usize;
-
-    let mut tick_time = 0.0;
-
-    loop {
-        if input::is_key_pressed(KeyCode::F11) {
-            fullscreen ^= true;
-            macroquad::window::set_fullscreen(fullscreen);
-        }
-
-        tick_time += macroquad::time::get_frame_time() * ticks_per_second;
-
-        for _ in 0..maximum_ticks_per_frame.min(tick_time.floor() as usize) {
-            simulation.update(1.0 / ticks_per_second);
-
-            tick_time -= 1.0;
-        }
-
-        tick_time = tick_time.min(1.0);
-
-        utils::update_camera_aspect_ratio(&mut camera);
-        camera::set_camera(&camera);
-
-        simulation.draw();
-
-        let mouse_position = utils::mouse_position(&camera);
-
-        for (_, soft_body) in &simulation.soft_bodies {
-            if soft_body.contains_point(mouse_position) {
-                soft_body.bounding_box.draw();
-
-                let (closest_line, closest_point, _, _) =
-                    soft_body.closest_line_to_point(mouse_position);
-
-                let (point_a, _, point_b) = soft_body.get_line(closest_line).unwrap();
-
-                utils::draw_line(point_a.position, point_b.position, 0.05, colors::BLUE);
-
-                shapes::draw_circle(closest_point.x, closest_point.y, 0.05, colors::BLUE);
-
-                println!("{}", soft_body.area());
-            }
-        }
-
-        window::next_frame().await;
-    }
+    simulation
 }
