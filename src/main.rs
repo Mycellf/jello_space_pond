@@ -310,13 +310,28 @@ async fn main() {
 
     let mut fullscreen = START_IN_FULLSCREEN;
 
+    let ticks_per_second = 120.0;
+
+    let minimum_fast_framerate: f32 = 15.0;
+    let maximum_ticks_per_frame = (ticks_per_second / minimum_fast_framerate).ceil() as usize;
+
+    let mut tick_time = 0.0;
+
     loop {
         if input::is_key_pressed(KeyCode::F11) {
             fullscreen ^= true;
             macroquad::window::set_fullscreen(fullscreen);
         }
 
-        simulation.update(1.0 / 120.0);
+        tick_time += macroquad::time::get_frame_time() * ticks_per_second;
+
+        for _ in 0..maximum_ticks_per_frame.min(tick_time.floor() as usize) {
+            simulation.update(1.0 / ticks_per_second);
+
+            tick_time -= 1.0;
+        }
+
+        tick_time = tick_time.min(1.0);
 
         utils::update_camera_aspect_ratio(&mut camera);
         camera::set_camera(&camera);
