@@ -304,7 +304,7 @@ async fn main() {
     };
 
     let mut camera = Camera2D {
-        zoom: -2.0 / Vec2::splat(5.0),
+        zoom: -2.0 / Vec2::splat(10.0),
         ..Default::default()
     };
 
