@@ -182,37 +182,37 @@ async fn main() {
                 shape: vec![
                     (
                         Point {
-                            position: vec2(0.0, -0.5),
-                            mass: 5.0,
-                            ..Default::default()
-                        },
-                        Line {
-                            spring: Spring::default(),
-                        },
-                    ),
-                    (
-                        Point {
-                            position: vec2(0.1, -0.5),
-                            mass: 5.0,
-                            ..Default::default()
-                        },
-                        Line {
-                            spring: Spring::default(),
-                        },
-                    ),
-                    (
-                        Point {
-                            position: vec2(1.0, 0.5),
-                            mass: 5.0,
-                            ..Default::default()
-                        },
-                        Line {
-                            spring: Spring::default(),
-                        },
-                    ),
-                    (
-                        Point {
                             position: vec2(0.0, 0.5),
+                            mass: 5.0,
+                            ..Default::default()
+                        },
+                        Line {
+                            spring: Spring::default(),
+                        },
+                    ),
+                    (
+                        Point {
+                            position: vec2(0.1, 0.5),
+                            mass: 5.0,
+                            ..Default::default()
+                        },
+                        Line {
+                            spring: Spring::default(),
+                        },
+                    ),
+                    (
+                        Point {
+                            position: vec2(1.0, 1.5),
+                            mass: 5.0,
+                            ..Default::default()
+                        },
+                        Line {
+                            spring: Spring::default(),
+                        },
+                    ),
+                    (
+                        Point {
+                            position: vec2(0.0, 1.5),
                             mass: 5.0,
                             ..Default::default()
                         },
@@ -294,6 +294,85 @@ async fn main() {
                         [1, 3],
                         Spring {
                             target_distance: SQRT_2,
+                            ..Default::default()
+                        },
+                    ),
+                ],
+                bounding_box: Default::default(),
+            },
+            SoftBody {
+                shape: vec![
+                    (
+                        Point {
+                            position: vec2(-5.0, 3.0),
+                            velocity: vec2(1.0, -0.75),
+                            mass: 10.0,
+                            ..Default::default()
+                        },
+                        Line {
+                            spring: Spring {
+                                target_distance: 2.0,
+                                ..Default::default()
+                            },
+                        },
+                    ),
+                    (
+                        Point {
+                            position: vec2(-4.0, 3.0),
+                            velocity: vec2(1.0, -0.75),
+                            mass: 10.0,
+                            ..Default::default()
+                        },
+                        Line {
+                            spring: Spring {
+                                target_distance: 2.0,
+                                ..Default::default()
+                            },
+                        },
+                    ),
+                    (
+                        Point {
+                            position: vec2(-4.0, 4.0),
+                            velocity: vec2(1.0, -0.75),
+                            mass: 10.0,
+                            ..Default::default()
+                        },
+                        Line {
+                            spring: Spring {
+                                target_distance: 0.25,
+                                ..Default::default()
+                            },
+                        },
+                    ),
+                    (
+                        Point {
+                            position: vec2(-5.0, 4.0),
+                            velocity: vec2(1.0, -0.75),
+                            mass: 10.0,
+                            ..Default::default()
+                        },
+                        Line {
+                            spring: Spring {
+                                target_distance: 0.25,
+                                ..Default::default()
+                            },
+                        },
+                    ),
+                ],
+                internal_springs: vec![
+                    (
+                        [0, 2],
+                        Spring {
+                            target_distance: 1.0,
+                            force_constant: 100.0,
+                            damping: 20.0,
+                        },
+                    ),
+                    (
+                        [1, 3],
+                        Spring {
+                            target_distance: 4.0,
+                            force_constant: 100.0,
                             ..Default::default()
                         },
                     ),
