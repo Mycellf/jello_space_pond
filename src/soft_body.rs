@@ -335,9 +335,9 @@ impl SoftBody {
         // Will move the points just the right distance so the line intersects the new position
         let interpolation_scale = 1.0 / (2.0 * interpolation.powi(2) - 2.0 * interpolation + 1.0);
 
-        let composite_velocity =
-            point_a.velocity.lerp(point_b.velocity, interpolation) * interpolation_scale;
-        let composite_mass = point_a.mass + point_b.mass;
+        let composite_velocity = point_a.velocity.lerp(point_b.velocity, interpolation);
+        let composite_mass =
+            utils::lerp(point_a.mass, point_b.mass, interpolation) * interpolation_scale;
 
         point.position = point
             .position
@@ -356,7 +356,7 @@ impl SoftBody {
 
         let weighted_velocity = (projected_point_velocity * point.mass
             + projected_composite_velocity * composite_mass)
-            / (composite_mass + point.mass);
+            / (point.mass + composite_mass);
 
         point.velocity += weighted_velocity - projected_point_velocity;
         let composite_velocity_nudge = weighted_velocity - projected_composite_velocity;
