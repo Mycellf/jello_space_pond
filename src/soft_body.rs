@@ -252,61 +252,91 @@ impl SoftBody {
                 continue;
             }
 
-            let (line_index, closest_point, _, point_interpolation) =
+            let (line, closest_point, _, interpolation) =
                 other.closest_line_to_point(point.position);
 
-            let (point_a, _, point_b) = other.get_line_mut(line_index).unwrap();
+            other.check_point_against_line(point, line, closest_point, interpolation);
 
-            // Will move the points just the right distance so the line intersects the new position
-            let interpolation_scale =
-                1.0 / (2.0 * point_interpolation.powi(2) - 2.0 * point_interpolation + 1.0);
-
-            let composite_point = Point {
-                position: closest_point,
-                velocity: point_a.velocity.lerp(point_b.velocity, point_interpolation)
-                    * interpolation_scale,
-                impulse: Vec2::ZERO,
-                mass: point_a.mass + point_b.mass,
-            };
-
-            point.position = point.position.lerp(
-                composite_point.position,
-                point.mass / (point.mass + composite_point.mass),
-            );
-
-            let composite_position_nudge = point.position - composite_point.position;
-
-            let collision_direction = (point_a.position - point_b.position)
-                .normalize_or_zero()
-                .perp();
-
-            let composite_velocity = composite_point
-                .velocity
-                .project_onto_normalized(collision_direction);
-
-            let point_velocity = point.velocity.project_onto_normalized(collision_direction);
-
-            let weighted_velocity = (point_velocity * point.mass
-                + composite_velocity * composite_point.mass)
-                / (composite_point.mass + point.mass);
-
-            point.velocity += weighted_velocity - point_velocity;
-            let composite_velocity_nudge = weighted_velocity - composite_velocity;
-
-            point_a.velocity +=
-                composite_velocity_nudge * (1.0 - point_interpolation) * interpolation_scale;
-            point_b.velocity +=
-                composite_velocity_nudge * point_interpolation * interpolation_scale;
-
-            point_a.position +=
-                composite_position_nudge * (1.0 - point_interpolation) * interpolation_scale;
-            point_b.position +=
-                composite_position_nudge * point_interpolation * interpolation_scale;
+            if interpolation <= f32::EPSILON {
+                // Wedged into corner
+                other.check_point_against_line(
+                    point,
+                    if line == 0 {
+                        other.shape.len() - 1
+                    } else {
+                        line - 1
+                    },
+                    closest_point,
+                    1.0,
+                )
+            } else if interpolation >= 1.0 - f32::EPSILON {
+                // Wedged into corner
+                other.check_point_against_line(
+                    point,
+                    if line >= other.shape.len() - 1 {
+                        0
+                    } else {
+                        line + 1
+                    },
+                    closest_point,
+                    0.0,
+                )
+            }
 
             collided = true;
         }
 
         collided
+    }
+
+    pub fn check_point_against_line(
+        &mut self,
+        point: &mut Point,
+        line: usize,
+        closest_point: Vec2,
+        interpolation: f32,
+    ) {
+        let (point_a, _, point_b) = self.get_line_mut(line).unwrap();
+
+        // Will move the points just the right distance so the line intersects the new position
+        let interpolation_scale = 1.0 / (2.0 * interpolation.powi(2) - 2.0 * interpolation + 1.0);
+
+        let composite_point = Point {
+            position: closest_point,
+            velocity: point_a.velocity.lerp(point_b.velocity, interpolation) * interpolation_scale,
+            impulse: Vec2::ZERO,
+            mass: point_a.mass + point_b.mass,
+        };
+
+        point.position = point.position.lerp(
+            composite_point.position,
+            point.mass / (point.mass + composite_point.mass),
+        );
+
+        let composite_position_nudge = point.position - composite_point.position;
+
+        let collision_direction = (point_a.position - point_b.position)
+            .normalize_or_zero()
+            .perp();
+
+        let composite_velocity = composite_point
+            .velocity
+            .project_onto_normalized(collision_direction);
+
+        let point_velocity = point.velocity.project_onto_normalized(collision_direction);
+
+        let weighted_velocity = (point_velocity * point.mass
+            + composite_velocity * composite_point.mass)
+            / (composite_point.mass + point.mass);
+
+        point.velocity += weighted_velocity - point_velocity;
+        let composite_velocity_nudge = weighted_velocity - composite_velocity;
+
+        point_a.velocity += composite_velocity_nudge * (1.0 - interpolation) * interpolation_scale;
+        point_b.velocity += composite_velocity_nudge * interpolation * interpolation_scale;
+
+        point_a.position += composite_position_nudge * (1.0 - interpolation) * interpolation_scale;
+        point_b.position += composite_position_nudge * interpolation * interpolation_scale;
     }
 
     /// CREDIT: chmike: <https://stackoverflow.com/a/717367>
