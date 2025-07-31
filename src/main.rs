@@ -275,7 +275,7 @@ fn assemble_simulation() -> Simulation {
                 },
             ),
         ],
-        10.0,
+        15.0,
     ));
 
     simulation.soft_bodies.insert(SoftBody::new(
