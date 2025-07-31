@@ -74,7 +74,7 @@ impl SoftBody {
     }
 
     pub fn add_pressure_impulse(&mut self, dt: f32) {
-        if self.gas_force <= f32::EPSILON {
+        if self.gas_force.abs() <= f32::EPSILON {
             self.pressure = 0.0;
 
             return;
