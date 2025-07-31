@@ -187,9 +187,7 @@ async fn main() {
                     mass: 5.0,
                     ..Default::default()
                 },
-                Line {
-                    spring: Spring::default(),
-                },
+                Line::default(),
             ),
             (
                 Point {
@@ -197,9 +195,7 @@ async fn main() {
                     mass: 5.0,
                     ..Default::default()
                 },
-                Line {
-                    spring: Spring::default(),
-                },
+                Line::default(),
             ),
             (
                 Point {
@@ -207,9 +203,7 @@ async fn main() {
                     mass: 5.0,
                     ..Default::default()
                 },
-                Line {
-                    spring: Spring::default(),
-                },
+                Line::default(),
             ),
             (
                 Point {
@@ -217,9 +211,7 @@ async fn main() {
                     mass: 5.0,
                     ..Default::default()
                 },
-                Line {
-                    spring: Spring::default(),
-                },
+                Line::default(),
             ),
         ],
         internal_springs: vec![
@@ -249,9 +241,7 @@ async fn main() {
                     mass: 1.0,
                     ..Default::default()
                 },
-                Line {
-                    spring: Spring::default(),
-                },
+                Line::default(),
             ),
             (
                 Point {
@@ -259,9 +249,7 @@ async fn main() {
                     mass: 1.0,
                     ..Default::default()
                 },
-                Line {
-                    spring: Spring::default(),
-                },
+                Line::default(),
             ),
             (
                 Point {
@@ -269,9 +257,7 @@ async fn main() {
                     mass: 1.0,
                     ..Default::default()
                 },
-                Line {
-                    spring: Spring::default(),
-                },
+                Line::default(),
             ),
             (
                 Point {
@@ -279,9 +265,7 @@ async fn main() {
                     mass: 1.0,
                     ..Default::default()
                 },
-                Line {
-                    spring: Spring::default(),
-                },
+                Line::default(),
             ),
         ],
         internal_springs: vec![
