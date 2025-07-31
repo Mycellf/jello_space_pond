@@ -18,7 +18,7 @@ use crate::{
     soft_body::{Line, Point, SoftBody, Spring},
 };
 
-const START_IN_FULLSCREEN: bool = false;
+const START_IN_FULLSCREEN: bool = true;
 
 fn config() -> Conf {
     Conf {
@@ -243,8 +243,18 @@ async fn main() {
                 shape: vec![
                     (
                         Point {
-                            position: vec2(2.0, 0.0),
-                            mass: 5.0,
+                            position: vec2(2.0, -1.0),
+                            mass: 1.0,
+                            ..Default::default()
+                        },
+                        Line {
+                            spring: Spring::default(),
+                        },
+                    ),
+                    (
+                        Point {
+                            position: vec2(3.0, -1.0),
+                            mass: 1.0,
                             ..Default::default()
                         },
                         Line {
@@ -254,7 +264,7 @@ async fn main() {
                     (
                         Point {
                             position: vec2(3.0, 0.0),
-                            mass: 5.0,
+                            mass: 1.0,
                             ..Default::default()
                         },
                         Line {
@@ -263,18 +273,8 @@ async fn main() {
                     ),
                     (
                         Point {
-                            position: vec2(3.0, 1.0),
-                            mass: 5.0,
-                            ..Default::default()
-                        },
-                        Line {
-                            spring: Spring::default(),
-                        },
-                    ),
-                    (
-                        Point {
-                            position: vec2(2.0, 1.0),
-                            mass: 5.0,
+                            position: vec2(2.0, 0.0),
+                            mass: 1.0,
                             ..Default::default()
                         },
                         Line {

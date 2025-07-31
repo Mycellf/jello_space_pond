@@ -48,7 +48,7 @@ pub fn closest_point_on_line(start: Vec2, end: Vec2, point: Vec2) -> (Vec2, f32)
         let line_progress = (point - start).dot(end - start) / length_squared;
         let line_progress = line_progress.clamp(0.0, 1.0);
 
-        (start + line_progress * (end - start), line_progress)
+        (start.lerp(end, line_progress), line_progress)
     }
 }
 

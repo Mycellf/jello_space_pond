@@ -1,6 +1,6 @@
 use macroquad::{
     color::{Color, colors},
-    math::Vec2,
+    math::{FloatExt, Vec2},
     shapes,
 };
 
@@ -209,10 +209,48 @@ impl SoftBody {
                 continue;
             }
 
-            let (_, closest_point, _, _) = other.closest_line_to_point(point.position);
+            let (line_index, _, _, point_interpolation) =
+                other.closest_line_to_point(point.position);
 
-            // TODO: Actual collision response
-            point.position = closest_point;
+            let (point_a, _, point_b) = other.get_line_mut(line_index).unwrap();
+
+            let composite_point = point_a.lerp(point_b, point_interpolation);
+
+            point.position = point.position.lerp(
+                composite_point.position,
+                point.mass / (point.mass + composite_point.mass),
+            );
+
+            let composite_position_nudge = point.position - composite_point.position;
+
+            let collision_direction = (point_a.position - point_b.position)
+                .normalize_or_zero()
+                .perp();
+
+            let composite_velocity = composite_point
+                .velocity
+                .project_onto_normalized(collision_direction);
+
+            let point_velocity = point.velocity.project_onto_normalized(collision_direction);
+
+            let weighted_velocity = (point_velocity * point.mass
+                + composite_velocity * composite_point.mass)
+                / (composite_point.mass + point.mass);
+
+            point.velocity += weighted_velocity - point_velocity;
+            let composite_velocity_nudge = weighted_velocity - composite_velocity;
+
+            point_a.velocity += composite_velocity_nudge * (1.0 - point_interpolation);
+            point_b.velocity += composite_velocity_nudge * point_interpolation;
+
+            // Will move the points just the right distance so the line intersects the new position
+            let position_nudge_scale =
+                1.0 / (2.0 * point_interpolation.powi(2) - 2.0 * point_interpolation + 1.0);
+
+            point_a.position +=
+                composite_position_nudge * (1.0 - point_interpolation) * position_nudge_scale;
+            point_b.position +=
+                composite_position_nudge * point_interpolation * position_nudge_scale;
 
             collided = true;
         }
@@ -237,6 +275,19 @@ impl Point {
         self.impulse = Vec2::ZERO;
 
         self.position += self.velocity / 2.0 * dt;
+    }
+
+    pub fn momentum(&self) -> Vec2 {
+        self.velocity * self.mass
+    }
+
+    pub fn lerp(&self, other: &Point, t: f32) -> Point {
+        Point {
+            position: self.position.lerp(other.position, t),
+            velocity: self.velocity.lerp(other.velocity, t),
+            impulse: self.impulse.lerp(other.impulse, t),
+            mass: self.mass.lerp(other.mass, t),
+        }
     }
 }
 
