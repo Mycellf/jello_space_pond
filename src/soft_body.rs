@@ -301,36 +301,31 @@ impl SoftBody {
         // Will move the points just the right distance so the line intersects the new position
         let interpolation_scale = 1.0 / (2.0 * interpolation.powi(2) - 2.0 * interpolation + 1.0);
 
-        let composite_point = Point {
-            position: closest_point,
-            velocity: point_a.velocity.lerp(point_b.velocity, interpolation) * interpolation_scale,
-            impulse: Vec2::ZERO,
-            mass: point_a.mass + point_b.mass,
-        };
+        let composite_velocity =
+            point_a.velocity.lerp(point_b.velocity, interpolation) * interpolation_scale;
+        let composite_mass = point_a.mass + point_b.mass;
 
-        point.position = point.position.lerp(
-            composite_point.position,
-            point.mass / (point.mass + composite_point.mass),
-        );
+        point.position = point
+            .position
+            .lerp(closest_point, point.mass / (point.mass + composite_mass));
 
-        let composite_position_nudge = point.position - composite_point.position;
+        let composite_position_nudge = point.position - closest_point;
 
         let collision_direction = (point_a.position - point_b.position)
             .normalize_or_zero()
             .perp();
 
-        let composite_velocity = composite_point
-            .velocity
-            .project_onto_normalized(collision_direction);
+        let projected_composite_velocity =
+            composite_velocity.project_onto_normalized(collision_direction);
 
-        let point_velocity = point.velocity.project_onto_normalized(collision_direction);
+        let projected_point_velocity = point.velocity.project_onto_normalized(collision_direction);
 
-        let weighted_velocity = (point_velocity * point.mass
-            + composite_velocity * composite_point.mass)
-            / (composite_point.mass + point.mass);
+        let weighted_velocity = (projected_point_velocity * point.mass
+            + projected_composite_velocity * composite_mass)
+            / (composite_mass + point.mass);
 
-        point.velocity += weighted_velocity - point_velocity;
-        let composite_velocity_nudge = weighted_velocity - composite_velocity;
+        point.velocity += weighted_velocity - projected_point_velocity;
+        let composite_velocity_nudge = weighted_velocity - projected_composite_velocity;
 
         point_a.velocity += composite_velocity_nudge * (1.0 - interpolation) * interpolation_scale;
         point_b.velocity += composite_velocity_nudge * interpolation * interpolation_scale;
