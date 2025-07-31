@@ -55,3 +55,7 @@ pub fn closest_point_on_line(start: Vec2, end: Vec2, point: Vec2) -> (Vec2, f32)
 pub fn draw_line(start: Vec2, end: Vec2, thickness: f32, color: Color) {
     shapes::draw_line(start.x, start.y, end.x, end.y, thickness, color);
 }
+
+pub fn combine_friction(a: f32, b: f32) -> f32 {
+    (a + b) / 2.0
+}

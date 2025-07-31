@@ -187,6 +187,19 @@ impl SoftBody {
         Some((point_a, line, point_b))
     }
 
+    pub fn get_adjacent_lines_to_point(&self, i: usize) -> Option<[&Line; 2]> {
+        let (_, line_b) = self.shape.get(i)?;
+        let (_, line_a) = &self.shape[if i > 0 { i - 1 } else { self.shape.len() - 1 }];
+
+        Some([line_a, line_b])
+    }
+
+    pub fn get_friction_of_point(&self, i: usize) -> Option<f32> {
+        let [line_a, line_b] = self.get_adjacent_lines_to_point(i)?;
+
+        Some((line_a.friction + line_b.friction) / 2.0)
+    }
+
     pub fn contains_point(&self, point: Vec2) -> bool {
         if self.bounding_box.contains_point(point) {
             // Cast a horizontal line to the right of the point
@@ -283,7 +296,10 @@ impl SoftBody {
     pub fn check_points_against_other_one_sided(&mut self, other: &mut SoftBody) -> bool {
         let mut collided = false;
 
-        for (point, _) in &mut self.shape {
+        for i in 0..self.shape.len() {
+            let point_friction = self.get_friction_of_point(i).unwrap();
+            let point = &mut self.shape[i].0;
+
             if !other.contains_point(point.position) {
                 continue;
             }
@@ -291,12 +307,19 @@ impl SoftBody {
             let (line, closest_point, _, interpolation) =
                 other.closest_line_to_point(point.position);
 
-            other.check_other_point_against_line(point, line, closest_point, interpolation);
+            other.check_other_point_against_line(
+                point,
+                point_friction,
+                line,
+                closest_point,
+                interpolation,
+            );
 
             if interpolation <= f32::EPSILON {
                 // Wedged into corner
                 other.check_other_point_against_line(
                     point,
+                    point_friction,
                     if line == 0 {
                         other.shape.len() - 1
                     } else {
@@ -309,6 +332,7 @@ impl SoftBody {
                 // Wedged into corner
                 other.check_other_point_against_line(
                     point,
+                    point_friction,
                     if line >= other.shape.len() - 1 {
                         0
                     } else {
@@ -328,13 +352,21 @@ impl SoftBody {
     pub fn check_other_point_against_line(
         &mut self,
         point: &mut Point,
+        point_friction: f32,
         line: usize,
         closest_point: Vec2,
         interpolation: f32,
     ) {
-        let (point_a, _, point_b) = self.get_line_mut(line).unwrap();
+        let (point_a, Line { friction, .. }, point_b) = self.get_line_mut(line).unwrap();
 
-        Self::check_point_against_line(point_a, point_b, point, closest_point, interpolation);
+        Self::check_point_against_line(
+            point_a,
+            point_b,
+            point,
+            utils::combine_friction(point_friction, *friction),
+            closest_point,
+            interpolation,
+        );
     }
 
     pub fn check_own_point_against_line(
@@ -344,20 +376,30 @@ impl SoftBody {
         closest_point: Vec2,
         interpolation: f32,
     ) {
+        let point_friction = self.get_friction_of_point(point).unwrap();
+
         let length = self.shape.len();
 
-        let [(point, _), (point_a, _), (point_b, _)] = self
+        let [(point, _), (point_a, Line { friction, .. }), (point_b, _)] = self
             .shape
             .get_disjoint_mut([point, line, if line < length - 1 { line + 1 } else { 0 }])
             .unwrap();
 
-        Self::check_point_against_line(point_a, point_b, point, closest_point, interpolation);
+        Self::check_point_against_line(
+            point_a,
+            point_b,
+            point,
+            utils::combine_friction(point_friction, *friction),
+            closest_point,
+            interpolation,
+        );
     }
 
     pub fn check_point_against_line(
         point_a: &mut Point,
         point_b: &mut Point,
         point: &mut Point,
+        friction: f32,
         closest_point: Vec2,
         interpolation: f32,
     ) {
@@ -374,21 +416,42 @@ impl SoftBody {
 
         let composite_position_nudge = point.position - closest_point;
 
-        let collision_direction = (point_a.position - point_b.position)
-            .normalize_or_zero()
-            .perp();
+        let tangent = (point_a.position - point_b.position).normalize_or_zero();
+        let normal = tangent.perp();
 
-        let projected_composite_velocity =
-            composite_velocity.project_onto_normalized(collision_direction);
+        let composite_tangent_velocity = composite_velocity.project_onto_normalized(tangent);
+        let composite_normal_velocity = composite_velocity.project_onto_normalized(normal);
 
-        let projected_point_velocity = point.velocity.project_onto_normalized(collision_direction);
+        let point_tangent_velocity = point.velocity.project_onto_normalized(tangent);
+        let point_normal_velocity = point.velocity.project_onto_normalized(normal);
 
-        let weighted_velocity = (projected_point_velocity * point.mass
-            + projected_composite_velocity * composite_mass)
+        let friction_velocity_nudge = if friction.abs() <= f32::EPSILON {
+            Vec2::ZERO
+        } else {
+            let relative_tangent_velocity = point_tangent_velocity - composite_tangent_velocity;
+            let relative_normal_velocity = point_normal_velocity - composite_normal_velocity;
+
+            let friction_velocity_nudge = -relative_tangent_velocity.normalize_or_zero()
+                * relative_normal_velocity.length()
+                * friction;
+
+            if relative_tangent_velocity.dot(relative_tangent_velocity + friction_velocity_nudge)
+                < 0.0
+            {
+                Vec2::ZERO
+            } else {
+                friction_velocity_nudge
+            }
+        };
+
+        let weighted_normal_velocity = (point_normal_velocity * point.mass
+            + composite_normal_velocity * composite_mass)
             / (point.mass + composite_mass);
 
-        point.velocity += weighted_velocity - projected_point_velocity;
-        let composite_velocity_nudge = weighted_velocity - projected_composite_velocity;
+        point.velocity +=
+            weighted_normal_velocity - point_normal_velocity + friction_velocity_nudge / 2.0;
+        let composite_velocity_nudge =
+            weighted_normal_velocity - composite_normal_velocity - friction_velocity_nudge / 2.0;
 
         point_a.velocity += composite_velocity_nudge * (1.0 - interpolation) * interpolation_scale;
         point_b.velocity += composite_velocity_nudge * interpolation * interpolation_scale;
@@ -452,9 +515,19 @@ impl Default for Point {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug)]
 pub struct Line {
     pub spring: Spring,
+    pub friction: f32,
+}
+
+impl Default for Line {
+    fn default() -> Self {
+        Self {
+            spring: Spring::default(),
+            friction: 0.25,
+        }
+    }
 }
 
 /// If the points are at the exact same position, no force is applied
@@ -768,6 +841,11 @@ impl SoftBodyBuilder {
 
     pub fn spring_scale(mut self, spring_scale: f32) -> Self {
         self.spring_scale = spring_scale;
+        self
+    }
+
+    pub fn friction(mut self, friction: f32) -> Self {
+        self.base_line.friction = friction;
         self
     }
 }
