@@ -15,7 +15,7 @@ use macroquad::{
 
 use crate::{
     simulation::Simulation,
-    soft_body::{SoftBodyBuilder, Spring},
+    soft_body::{AngularSpring, LinearSpring, SoftBodyBuilder},
 };
 
 const START_IN_FULLSCREEN: bool = true;
@@ -112,22 +112,19 @@ async fn main() {
 fn assemble_simulation() -> Simulation {
     let mut simulation = Simulation::new();
 
-    let diagonal_spring = Spring {
+    let diagonal_spring = LinearSpring {
         target_distance: SQRT_2,
-        compression: false,
         ..Default::default()
     };
 
-    let orthogonal_spring = Spring {
-        compression: false,
-        ..Default::default()
-    };
+    let orthogonal_spring = LinearSpring::default();
 
     simulation.soft_bodies.insert(
         SoftBodyBuilder::default()
-            .gas_force(15.0)
-            .offset(-0.5, -1.5)
+            .gas_force(30.0)
+            .offset(0.0, -1.5)
             .spring_scale(2.0)
+            .subdivisions(2)
             .point(0.5, 0.5)
             .with_internal_spring_start(0)
             .with_internal_spring_start(3)
@@ -165,15 +162,15 @@ fn assemble_simulation() -> Simulation {
             .build(),
     );
 
-    let diagonal_spring = Spring {
+    let diagonal_spring = LinearSpring {
         target_distance: SQRT_2,
         ..Default::default()
     };
 
     simulation.soft_bodies.insert({
         let mut soft_body = SoftBodyBuilder::default()
-            .mass(5.0)
-            .offset(0.0, 0.5)
+            .offset(10.0, -10.0)
+            .subdivisions(2)
             .point(0.0, 0.0)
             .with_internal_spring_start(0)
             .point(1.0, 0.0)
@@ -184,14 +181,17 @@ fn assemble_simulation() -> Simulation {
             .with_internal_spring_end(1, diagonal_spring)
             .build();
 
-        soft_body.shape[1].0.position.x -= 0.9;
+        soft_body.shape[1].0.position.x -= 0.3;
+        soft_body.shape[2].0.position.x -= 0.6;
+        soft_body.shape[3].0.position.x -= 0.9;
 
         soft_body
     });
 
     simulation.soft_bodies.insert(
         SoftBodyBuilder::default()
-            .offset(2.0, -1.0)
+            .offset(3.0, -5.0)
+            .subdivisions(2)
             .point(0.0, 0.0)
             .with_internal_spring_start(0)
             .point(1.0, 0.0)
@@ -207,18 +207,18 @@ fn assemble_simulation() -> Simulation {
         SoftBodyBuilder::default()
             .gas_force(50.0)
             .mass(10.0)
-            .velocity(2.0, -1.5)
-            .offset(-5.0, 3.0)
+            .velocity(2.0, -3.0)
+            .offset(-6.0, 7.75)
             .point(0.0, 0.0)
             .with_internal_spring_start(0)
-            .with_spring(Spring {
+            .with_spring(LinearSpring {
                 force_constant: 100.0,
                 target_distance: 2.0,
                 ..Default::default()
             })
             .point(1.0, 0.0)
             .with_internal_spring_start(1)
-            .with_spring(Spring {
+            .with_spring(LinearSpring {
                 force_constant: 100.0,
                 target_distance: 2.0,
                 ..Default::default()
@@ -226,14 +226,14 @@ fn assemble_simulation() -> Simulation {
             .point(1.0, 1.0)
             .with_internal_spring_end(
                 0,
-                Spring {
+                LinearSpring {
                     target_distance: 1.0,
                     force_constant: 200.0,
                     damping: 20.0,
                     ..Default::default()
                 },
             )
-            .with_spring(Spring {
+            .with_spring(LinearSpring {
                 force_constant: 100.0,
                 target_distance: 0.25,
                 ..Default::default()
@@ -241,13 +241,13 @@ fn assemble_simulation() -> Simulation {
             .point(0.0, 1.0)
             .with_internal_spring_end(
                 1,
-                Spring {
+                LinearSpring {
                     target_distance: 4.0,
                     force_constant: 200.0,
                     ..Default::default()
                 },
             )
-            .with_spring(Spring {
+            .with_spring(LinearSpring {
                 force_constant: 100.0,
                 target_distance: 0.25,
                 ..Default::default()
@@ -261,11 +261,22 @@ fn assemble_simulation() -> Simulation {
                 .gas_force(5.0)
                 .friction(1.0)
                 .mass(0.5)
+                .base_angular_spring(Some(AngularSpring {
+                    force_constant: 0.5,
+                    damping: 0.25,
+                    ..Default::default()
+                }))
+                .base_spring({
+                    LinearSpring {
+                        force_constant: 25.0,
+                        ..Default::default()
+                    }
+                })
                 .spring_scale(0.5)
                 .offset(x as f32 * 2.0, y as f32 * 2.0);
 
-            for i in 0..16 {
-                let angle = i as f32 / 16.0 * TAU;
+            for i in 0..12 {
+                let angle = i as f32 / 12.0 * TAU;
 
                 builder = builder.point(angle.cos(), angle.sin())
             }

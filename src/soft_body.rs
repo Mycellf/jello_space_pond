@@ -16,7 +16,7 @@ use crate::utils;
 #[derive(Clone, Debug)]
 pub struct SoftBody {
     pub shape: Vec<(Point, Line)>,
-    pub internal_springs: Vec<([usize; 2], Spring)>,
+    pub internal_springs: Vec<([usize; 2], LinearSpring)>,
     pub bounding_box: BoundingBox,
     pub gas_force: f32,
     pub pressure: f32,
@@ -25,7 +25,7 @@ pub struct SoftBody {
 impl SoftBody {
     pub fn new(
         shape: Vec<(Point, Line)>,
-        internal_springs: Vec<([usize; 2], Spring)>,
+        internal_springs: Vec<([usize; 2], LinearSpring)>,
         gas_force: f32,
     ) -> Self {
         Self {
@@ -80,6 +80,14 @@ impl SoftBody {
 
                 spring.draw_line(point_a, point_b);
             }
+
+            for i in 0..self.shape.len() {
+                let [point_a, point_b, point_c] = self.get_angle(i).unwrap();
+
+                if let Some(spring) = point_b.spring {
+                    spring.draw_circle(point_a, point_b, point_c);
+                }
+            }
         }
     }
 
@@ -87,12 +95,23 @@ impl SoftBody {
         self.add_pressure_impulse(dt);
 
         if self.shape.len() > 1 {
+            // Angular Springs
+            for i in 0..self.shape.len() {
+                let [point_a, point_b, point_c] = self.get_angle_mut(i).unwrap();
+
+                if let Some(spring) = point_b.spring {
+                    spring.apply_forces(point_a, point_b, point_c, dt);
+                }
+            }
+
+            // Linear Springs
             for i in 0..self.shape.len() {
                 let (point_a, line, point_b) = self.get_line_mut(i).unwrap();
 
                 line.spring.apply_force(point_a, point_b, dt);
             }
 
+            // Internal Linear Springs
             for &(indecies, ref spring) in &self.internal_springs {
                 let [(point_a, _), (point_b, _)] = self.shape.get_disjoint_mut(indecies).unwrap();
 
@@ -185,6 +204,33 @@ impl SoftBody {
             .unwrap();
 
         Some((point_a, line, point_b))
+    }
+
+    pub fn get_angle(&self, i: usize) -> Option<[&Point; 3]> {
+        let (point_b, _) = self.shape.get(i)?;
+        let (point_c, _) = &self.shape[if i < self.shape.len() - 1 { i + 1 } else { 0 }];
+        let (point_a, _) = &self.shape[if i > 0 { i - 1 } else { self.shape.len() - 1 }];
+
+        Some([point_a, point_b, point_c])
+    }
+
+    pub fn get_angle_mut(&mut self, i: usize) -> Option<[&mut Point; 3]> {
+        let length = self.shape.len();
+
+        if i >= length {
+            return None;
+        }
+
+        let [(point_a, _), (point_b, _), (point_c, _)] = self
+            .shape
+            .get_disjoint_mut([
+                if i > 0 { i - 1 } else { length - 1 },
+                i,
+                if i < length - 1 { i + 1 } else { 0 },
+            ])
+            .unwrap();
+
+        Some([point_a, point_b, point_c])
     }
 
     pub fn get_adjacent_lines_to_point(&self, i: usize) -> Option<[&Line; 2]> {
@@ -487,6 +533,7 @@ pub struct Point {
     pub velocity: Vec2,
     pub impulse: Vec2,
     pub mass: f32,
+    pub spring: Option<AngularSpring>,
 }
 
 impl Point {
@@ -511,20 +558,21 @@ impl Default for Point {
             velocity: Vec2::ZERO,
             impulse: Vec2::ZERO,
             mass: 1.0,
+            spring: Some(AngularSpring::default()),
         }
     }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct Line {
-    pub spring: Spring,
+    pub spring: LinearSpring,
     pub friction: f32,
 }
 
 impl Default for Line {
     fn default() -> Self {
         Self {
-            spring: Spring::default(),
+            spring: LinearSpring::default(),
             friction: 0.25,
         }
     }
@@ -532,7 +580,7 @@ impl Default for Line {
 
 /// If the points are at the exact same position, no force is applied
 #[derive(Clone, Copy, Debug)]
-pub struct Spring {
+pub struct LinearSpring {
     pub target_distance: f32,
     pub force_constant: f32,
     pub damping: f32,
@@ -540,7 +588,7 @@ pub struct Spring {
     pub tension: bool,
 }
 
-impl Spring {
+impl LinearSpring {
     pub fn draw_line(&self, point_a: &Point, point_b: &Point) {
         const WEAK_COLOR: Color = colors::GREEN;
         const STRONG_COLOR: Color = colors::RED;
@@ -589,7 +637,7 @@ impl Spring {
     }
 }
 
-impl Default for Spring {
+impl Default for LinearSpring {
     fn default() -> Self {
         Self {
             target_distance: 1.0,
@@ -597,6 +645,99 @@ impl Default for Spring {
             damping: 10.0,
             compression: true,
             tension: true,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct AngularSpring {
+    pub target_angle: f32,
+    pub force_constant: f32,
+    pub damping: f32,
+    pub inwards: bool,
+    pub outwards: bool,
+}
+
+impl AngularSpring {
+    pub fn draw_circle(&self, point_a: &Point, point_b: &Point, point_c: &Point) {
+        const WEAK_COLOR: Color = colors::GREEN;
+        const STRONG_COLOR: Color = colors::RED;
+
+        let forces = self.get_forces(point_a, point_b, point_c);
+
+        let color = utils::color_lerp(
+            WEAK_COLOR,
+            STRONG_COLOR,
+            (forces.iter().copied().map(Vec2::length).sum::<f32>() / 6.0).clamp(0.0, 1.0),
+        );
+
+        shapes::draw_circle(point_b.position.x, point_b.position.y, 0.1, color);
+    }
+
+    pub fn apply_forces(
+        &self,
+        point_a: &mut Point,
+        point_b: &mut Point,
+        point_c: &mut Point,
+        dt: f32,
+    ) {
+        let [impulse_a, impulse_b, impulse_c] = self.get_forces(point_a, point_b, point_c);
+
+        point_a.impulse += impulse_a * dt;
+        point_b.impulse += impulse_b * dt;
+        point_c.impulse += impulse_c * dt;
+    }
+
+    pub fn get_forces(&self, point_a: &Point, point_b: &Point, point_c: &Point) -> [Vec2; 3] {
+        let base_direction = point_b.position - point_a.position;
+        let measure_direction = point_c.position - point_b.position;
+
+        if base_direction == Vec2::ZERO || measure_direction == Vec2::ZERO {
+            return [Vec2::ZERO; 3];
+        }
+
+        let angle = base_direction.angle_between(measure_direction);
+
+        let point_a_normal = base_direction.normalize_or_zero().perp();
+        let point_c_normal = measure_direction.normalize_or_zero().perp();
+
+        let angular_velocity_a =
+            (point_a.velocity - point_b.velocity).dot(point_a_normal) / base_direction.length();
+        let angular_velocity_c =
+            (point_c.velocity - point_b.velocity).dot(point_c_normal) / measure_direction.length();
+
+        let relative_angular_velocity = angular_velocity_c + angular_velocity_a;
+
+        let force = self.force_constant * (self.target_angle - angle);
+        let damping = -relative_angular_velocity * self.damping;
+
+        let mut total_force = force + damping;
+
+        if !self.outwards && total_force > 0.0 || !self.inwards && total_force < 0.0 {
+            total_force = 0.0;
+        }
+
+        total_force = total_force.clamp(-self.force_constant * 10.0, self.force_constant * 10.0);
+
+        let point_a_force = point_a_normal * total_force / base_direction.length();
+        let point_c_force = point_c_normal * total_force / measure_direction.length();
+
+        [
+            point_a_force,
+            -(point_a_force + point_c_force),
+            point_c_force,
+        ]
+    }
+}
+
+impl Default for AngularSpring {
+    fn default() -> Self {
+        Self {
+            target_angle: 0.0,
+            force_constant: 1.0,
+            damping: 1.0,
+            inwards: true,
+            outwards: true,
         }
     }
 }
@@ -641,7 +782,7 @@ impl BoundingBox {
 #[derive(Clone, Debug)]
 pub struct SoftBodyBuilder {
     pub soft_body: SoftBody,
-    pub internal_springs: Vec<SpringBuilder>,
+    pub internal_springs: Vec<InternalSpringBuilder>,
 
     pub base_point: Point,
     pub base_line: Line,
@@ -685,8 +826,19 @@ impl SoftBodyBuilder {
 
         for (id, internal_spring) in self.internal_springs.into_iter().enumerate() {
             match internal_spring {
-                SpringBuilder::Incomplete(_) => panic!("Spring {id} is incomplete"),
-                SpringBuilder::Unused | SpringBuilder::Complete => (),
+                InternalSpringBuilder::Incomplete(_) => panic!("Spring {id} is incomplete"),
+                InternalSpringBuilder::Unused | InternalSpringBuilder::Complete => (),
+            }
+        }
+
+        for i in 0..self.soft_body.shape.len() {
+            let [point_a, point_b, point_c] = self.soft_body.get_angle_mut(i).unwrap();
+
+            if let Some(spring) = &mut point_b.spring {
+                let angle = (point_b.position - point_a.position)
+                    .angle_between(point_c.position - point_b.position);
+
+                spring.target_angle = angle;
             }
         }
 
@@ -739,7 +891,7 @@ impl SoftBodyBuilder {
         }
     }
 
-    pub fn with_spring(mut self, spring: Spring) -> Self {
+    pub fn with_spring(mut self, spring: LinearSpring) -> Self {
         self.soft_body.shape.last_mut().unwrap().1.spring = spring;
         self.last_spring_specified = true;
         self
@@ -757,22 +909,22 @@ impl SoftBodyBuilder {
         self
     }
 
-    pub fn base_spring(mut self, spring: Spring) -> Self {
+    pub fn base_spring(mut self, spring: LinearSpring) -> Self {
         self.base_line.spring = spring;
         self
     }
 
     pub fn with_internal_spring_start(mut self, id: usize) -> Self {
         while self.internal_springs.len() <= id {
-            self.internal_springs.push(SpringBuilder::Unused);
+            self.internal_springs.push(InternalSpringBuilder::Unused);
         }
 
         match self.internal_springs[id] {
-            SpringBuilder::Unused => {
+            InternalSpringBuilder::Unused => {
                 self.internal_springs[id] =
-                    SpringBuilder::Incomplete(self.soft_body.shape.len() - 1);
+                    InternalSpringBuilder::Incomplete(self.soft_body.shape.len() - 1);
             }
-            SpringBuilder::Incomplete(_) | SpringBuilder::Complete => {
+            InternalSpringBuilder::Incomplete(_) | InternalSpringBuilder::Complete => {
                 panic!("The spring {id} already exists");
             }
         }
@@ -780,20 +932,20 @@ impl SoftBodyBuilder {
         self
     }
 
-    pub fn with_internal_spring_end(mut self, id: usize, spring: Spring) -> Self {
+    pub fn with_internal_spring_end(mut self, id: usize, spring: LinearSpring) -> Self {
         match self.internal_springs.get(id) {
-            Some(&SpringBuilder::Incomplete(start_index)) => {
-                self.internal_springs[id] = SpringBuilder::Complete;
+            Some(&InternalSpringBuilder::Incomplete(start_index)) => {
+                self.internal_springs[id] = InternalSpringBuilder::Complete;
                 let end_index = self.soft_body.shape.len() - 1;
 
                 self.soft_body
                     .internal_springs
                     .push(([start_index, end_index], spring));
             }
-            Some(SpringBuilder::Complete) => {
+            Some(InternalSpringBuilder::Complete) => {
                 panic!("The spring {id} is already finished");
             }
-            Some(SpringBuilder::Unused) | None => {
+            Some(InternalSpringBuilder::Unused) | None => {
                 panic!("The spring {id} does not exist");
             }
         }
@@ -803,6 +955,11 @@ impl SoftBodyBuilder {
 
     pub fn base_point(mut self, point: Point) -> Self {
         self.base_point = point;
+        self
+    }
+
+    pub fn base_angular_spring(mut self, spring: Option<AngularSpring>) -> Self {
+        self.base_point.spring = spring;
         self
     }
 
@@ -851,7 +1008,7 @@ impl SoftBodyBuilder {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum SpringBuilder {
+pub enum InternalSpringBuilder {
     Unused,
     Incomplete(usize),
     Complete,
