@@ -473,7 +473,7 @@ fn assemble_simulation() -> Simulation {
 
     for x in 3..19 {
         for y in -13..-5 {
-            let offset = vec2(x as f32, y as f32);
+            let offset = vec2(x as f32, y as f32) * 2.0;
 
             simulation.soft_bodies.insert(SoftBody::new(
                 vec![
@@ -483,70 +483,52 @@ fn assemble_simulation() -> Simulation {
                             mass: 1.0,
                             ..Default::default()
                         },
-                        Line {
-                            spring: Spring {
-                                target_distance: 0.5,
-                                ..Default::default()
-                            },
-                        },
+                        Line::default(),
                     ),
                     (
                         Point {
-                            position: offset + vec2(0.5, 0.0),
+                            position: offset + vec2(1.0, 0.0),
                             mass: 1.0,
                             ..Default::default()
                         },
-                        Line {
-                            spring: Spring {
-                                target_distance: 0.5,
-                                ..Default::default()
-                            },
-                        },
+                        Line::default(),
                     ),
                     (
                         Point {
-                            position: offset + vec2(0.5, 0.5),
+                            position: offset + vec2(1.0, 1.0),
                             mass: 1.0,
                             ..Default::default()
                         },
-                        Line {
-                            spring: Spring {
-                                target_distance: 0.5,
-                                ..Default::default()
-                            },
-                        },
+                        Line::default(),
                     ),
                     (
                         Point {
-                            position: offset + vec2(0.0, 0.5),
+                            position: offset + vec2(0.0, 1.0),
                             mass: 1.0,
                             ..Default::default()
                         },
-                        Line {
-                            spring: Spring {
-                                target_distance: 0.5,
-                                ..Default::default()
-                            },
-                        },
+                        Line::default(),
                     ),
                 ],
                 vec![
                     (
                         [0, 2],
                         Spring {
-                            target_distance: SQRT_2 / 2.0,
+                            target_distance: SQRT_2,
+                            compression: false,
                             ..Default::default()
                         },
                     ),
                     (
                         [1, 3],
                         Spring {
-                            target_distance: SQRT_2 / 2.0,
+                            target_distance: SQRT_2,
+                            compression: false,
                             ..Default::default()
                         },
                     ),
                 ],
-                0.0,
+                10.0,
             ));
         }
     }
