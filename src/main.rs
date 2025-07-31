@@ -38,6 +38,7 @@ async fn main() {
     };
 
     let mut fullscreen = START_IN_FULLSCREEN;
+    let mut debug = false;
 
     let ticks_per_second = 120.0;
 
@@ -52,6 +53,10 @@ async fn main() {
             macroquad::window::set_fullscreen(fullscreen);
         }
 
+        if input::is_key_pressed(KeyCode::F3) {
+            debug ^= true;
+        }
+
         tick_time += macroquad::time::get_frame_time() * ticks_per_second;
 
         for _ in 0..maximum_ticks_per_frame.min(tick_time.floor() as usize) {
@@ -62,10 +67,19 @@ async fn main() {
 
         tick_time = tick_time.min(1.0);
 
+        let mut input = vec2(0.0, 0.0);
+
+        input.x += input::is_key_down(KeyCode::D) as u8 as f32;
+        input.x -= input::is_key_down(KeyCode::A) as u8 as f32;
+        input.y += input::is_key_down(KeyCode::W) as u8 as f32;
+        input.y -= input::is_key_down(KeyCode::S) as u8 as f32;
+
+        camera.target += input * macroquad::time::get_frame_time() * 5.0;
+
         utils::update_camera_aspect_ratio(&mut camera);
         camera::set_camera(&camera);
 
-        simulation.draw();
+        simulation.draw(debug);
 
         let mouse_position = utils::mouse_position(&camera);
 
