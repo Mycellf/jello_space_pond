@@ -510,24 +510,7 @@ fn assemble_simulation() -> Simulation {
                         Line::default(),
                     ),
                 ],
-                vec![
-                    (
-                        [0, 2],
-                        Spring {
-                            target_distance: SQRT_2,
-                            compression: false,
-                            ..Default::default()
-                        },
-                    ),
-                    (
-                        [1, 3],
-                        Spring {
-                            target_distance: SQRT_2,
-                            compression: false,
-                            ..Default::default()
-                        },
-                    ),
-                ],
+                vec![],
                 10.0,
             ));
         }
