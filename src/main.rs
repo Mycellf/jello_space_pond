@@ -258,12 +258,9 @@ fn assemble_simulation() -> Simulation {
     for x in 3..19 {
         for y in -13..-5 {
             let mut builder = SoftBodyBuilder::default()
-                .gas_force(10.0)
+                .gas_force(5.0)
                 .friction(1.0)
-                .base_spring(Spring {
-                    force_constant: 100.0,
-                    ..Default::default()
-                })
+                .mass(0.5)
                 .spring_scale(0.5)
                 .offset(x as f32 * 2.0, y as f32 * 2.0);
 
