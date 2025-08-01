@@ -12,7 +12,10 @@ use macroquad::{
     ui::Vertex,
 };
 
-use crate::{simulation::ConstraintKey, utils};
+use crate::{
+    simulation::{ConstraintKey, SoftBodyKey},
+    utils,
+};
 
 /// Points should always be oriented counter clockwise
 ///
@@ -74,19 +77,7 @@ impl SoftBody {
         for attatchment_point in &self.attatchment_points {
             let mut i = attatchment_point.start_point;
 
-            let reference_point = if attatchment_point.length < 2 {
-                i
-            } else {
-                self.next_point(i)
-            };
-
-            let color = if let (
-                Point {
-                    constraint: None, ..
-                },
-                _,
-            ) = self.shape[reference_point]
-            {
+            let color = if attatchment_point.connection.is_none() {
                 Self::ATTATCHMENT_POINT_COLOR
             } else {
                 Self::ATTATCHMENT_POINT_COLOR_USED
@@ -837,6 +828,13 @@ impl Default for Line {
 pub struct AttatchmentPoint {
     pub start_point: usize,
     pub length: usize,
+    pub connection: Option<AttatchmentPointHandle>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct AttatchmentPointHandle {
+    pub soft_body: SoftBodyKey,
+    pub index: usize,
 }
 
 /// If the points are at the exact same position, no force is applied
@@ -1291,6 +1289,7 @@ impl SoftBodyBuilder {
         self.soft_body.attatchment_points.push(AttatchmentPoint {
             start_point: self.soft_body.shape.len().checked_sub(1).unwrap(),
             length,
+            connection: None,
         });
         self
     }

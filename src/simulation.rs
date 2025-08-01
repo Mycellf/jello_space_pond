@@ -1,6 +1,9 @@
 use slotmap::{HopSlotMap, new_key_type};
 
-use crate::{constraint::Constraint, soft_body::SoftBody};
+use crate::{
+    constraint::{Constraint, PointHandle},
+    soft_body::{AttatchmentPointHandle, SoftBody},
+};
 
 pub struct Simulation {
     pub soft_bodies: HopSlotMap<SoftBodyKey, SoftBody>,
@@ -166,5 +169,66 @@ impl Simulation {
         } else {
             None
         }
+    }
+
+    /// Returns `None` if both handles point to the same soft body, if either is invalid, or if
+    /// they don't have the same length.
+    #[must_use]
+    pub fn connect_attatchment_points(
+        &mut self,
+        [handle_a, handle_b]: [AttatchmentPointHandle; 2],
+    ) -> Option<()> {
+        let [soft_body_a, soft_body_b] = self
+            .soft_bodies
+            .get_disjoint_mut([handle_a.soft_body, handle_b.soft_body])?;
+
+        let length_a = soft_body_a.shape.len();
+        let length_b = soft_body_b.shape.len();
+
+        let attatchment_point_a = soft_body_a.attatchment_points.get_mut(handle_a.index)?;
+        let attatchment_point_b = soft_body_b.attatchment_points.get_mut(handle_b.index)?;
+
+        if attatchment_point_a.length != attatchment_point_b.length
+            || attatchment_point_a.connection.is_some()
+            || attatchment_point_b.connection.is_some()
+        {
+            return None;
+        }
+
+        attatchment_point_a.connection = Some(handle_b);
+        attatchment_point_b.connection = Some(handle_a);
+
+        let mut point_a = attatchment_point_a.start_point;
+        let mut point_b =
+            (attatchment_point_b.start_point + attatchment_point_b.length - 1) % length_b;
+
+        for _ in 0..attatchment_point_a.length {
+            self.insert_constraint(Constraint::HoldTogether {
+                points: vec![
+                    PointHandle {
+                        soft_body: handle_a.soft_body,
+                        index: point_a,
+                    },
+                    PointHandle {
+                        soft_body: handle_b.soft_body,
+                        index: point_b,
+                    },
+                ],
+            });
+
+            if point_a < length_a - 1 {
+                point_a += 1;
+            } else {
+                point_a = 0;
+            }
+
+            if point_b > 0 {
+                point_b -= 1;
+            } else {
+                point_b = length_b - 1;
+            }
+        }
+
+        Some(())
     }
 }
