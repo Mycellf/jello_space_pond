@@ -7,10 +7,8 @@ use std::f32::consts::{SQRT_2, TAU};
 
 use macroquad::{
     camera::{self, Camera2D},
-    color::colors,
-    input::{self, KeyCode, MouseButton},
+    input::{self, KeyCode},
     math::{Vec2, vec2},
-    shapes,
     window::{self, Conf},
 };
 
@@ -90,29 +88,6 @@ async fn main() {
 
         simulation.draw(debug);
 
-        let mouse_position = utils::mouse_position(&camera);
-
-        for (key, soft_body) in &simulation.soft_bodies {
-            if soft_body.contains_point(mouse_position) {
-                if input::is_mouse_button_pressed(MouseButton::Left) {
-                    simulation.destroy_soft_body(key, None);
-
-                    break;
-                }
-
-                soft_body.bounding_box.draw();
-
-                let (closest_line, closest_point, _, _) =
-                    soft_body.closest_line_to_point(mouse_position);
-
-                let (point_a, _, point_b) = soft_body.get_line(closest_line).unwrap();
-
-                utils::draw_line(point_a.position, point_b.position, 0.05, colors::BLUE);
-
-                shapes::draw_circle(closest_point.x, closest_point.y, 0.05, colors::BLUE);
-            }
-        }
-
         window::next_frame().await;
     }
 }
@@ -180,12 +155,16 @@ fn assemble_simulation() -> Simulation {
             .offset(7.0, -10.0)
             .subdivisions(2)
             .point(0.0, 0.0)
+            .with_attatchment_point(4)
             .with_internal_spring_start(0)
             .point(1.0, 0.0)
+            .with_attatchment_point(4)
             .with_internal_spring_start(1)
             .point(1.0, 1.0)
+            .with_attatchment_point(4)
             .with_internal_spring_end(0, diagonal_spring)
             .point(0.0, 1.0)
+            .with_attatchment_point(4)
             .with_internal_spring_end(1, diagonal_spring)
             .build();
 
@@ -201,12 +180,16 @@ fn assemble_simulation() -> Simulation {
             .offset(0.0, -5.0)
             .subdivisions(2)
             .point(0.0, 0.0)
+            .with_attatchment_point(4)
             .with_internal_spring_start(0)
             .point(1.0, 0.0)
+            .with_attatchment_point(4)
             .with_internal_spring_start(1)
             .point(1.0, 1.0)
+            .with_attatchment_point(4)
             .with_internal_spring_end(0, diagonal_spring)
             .point(0.0, 1.0)
+            .with_attatchment_point(4)
             .with_internal_spring_end(1, diagonal_spring)
             .build(),
     );

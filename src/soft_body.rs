@@ -28,11 +28,19 @@ pub struct SoftBody {
 
     pub triangle_indices: Vec<u16>,
     pub debris_age: Option<f32>,
+
+    pub attatchment_points: Vec<AttatchmentPoint>,
 }
 
 impl SoftBody {
     pub const DEBRIS_DECAY_TIME: f32 = 5.0;
     pub const DEBRIS_MASS: f32 = 0.1;
+
+    pub const FILL_COLOR: Color = colors::LIGHTGRAY;
+
+    pub const ATTATCHMENT_POINT_PADDING: f32 = 0.25;
+    pub const ATTATCHMENT_POINT_THICKNESS: f32 = 0.05;
+    pub const ATTATCHMENT_POINT_COLOR: Color = colors::WHITE;
 
     pub fn new(
         shape: Vec<(Point, Line)>,
@@ -48,10 +56,78 @@ impl SoftBody {
 
             triangle_indices: Vec::new(),
             debris_age: None,
+
+            attatchment_points: Vec::new(),
         };
 
         soft_body.update_triangulation_indecies();
         soft_body
+    }
+
+    pub fn draw(&self) {
+        self.fill_color(Self::FILL_COLOR);
+
+        self.draw_attatchment_points();
+    }
+
+    pub fn draw_attatchment_points(&self) {
+        for attatchment_point in &self.attatchment_points {
+            let mut i = attatchment_point.start_point;
+
+            if attatchment_point.length < 3 {
+                if attatchment_point.length < 2 {
+                    let (Point { position: a, .. }, _) = self.shape[i];
+                    shapes::draw_circle(
+                        a.x,
+                        a.y,
+                        Self::ATTATCHMENT_POINT_THICKNESS,
+                        Self::ATTATCHMENT_POINT_COLOR,
+                    );
+                    continue;
+                }
+
+                let (&Point { position: a, .. }, _, &Point { position: b, .. }) =
+                    self.get_line(i).unwrap();
+                utils::draw_line(
+                    a + (b - a) * Self::ATTATCHMENT_POINT_PADDING,
+                    b - (b - a) * Self::ATTATCHMENT_POINT_PADDING,
+                    Self::ATTATCHMENT_POINT_THICKNESS,
+                    Self::ATTATCHMENT_POINT_COLOR,
+                );
+                continue;
+            }
+
+            let (&Point { position: a, .. }, _, &Point { position: b, .. }) =
+                self.get_line(i).unwrap();
+            utils::draw_line(
+                a + (b - a) * Self::ATTATCHMENT_POINT_PADDING,
+                b,
+                Self::ATTATCHMENT_POINT_THICKNESS,
+                Self::ATTATCHMENT_POINT_COLOR,
+            );
+            i = self.next_point(i);
+
+            for _ in 3..attatchment_point.length {
+                let (&Point { position: a, .. }, _, &Point { position: b, .. }) =
+                    self.get_line(i).unwrap();
+                utils::draw_line(
+                    a,
+                    b,
+                    Self::ATTATCHMENT_POINT_THICKNESS,
+                    Self::ATTATCHMENT_POINT_COLOR,
+                );
+                i = self.next_point(i);
+            }
+
+            let (&Point { position: a, .. }, _, &Point { position: b, .. }) =
+                self.get_line(i).unwrap();
+            utils::draw_line(
+                a,
+                b - (b - a) * Self::ATTATCHMENT_POINT_PADDING,
+                Self::ATTATCHMENT_POINT_THICKNESS,
+                Self::ATTATCHMENT_POINT_COLOR,
+            );
+        }
     }
 
     /// CREDIT: tirithen <https://github.com/not-fl3/macroquad/issues/174#issuecomment-817203498>
@@ -749,6 +825,12 @@ impl Default for Line {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct AttatchmentPoint {
+    pub start_point: usize,
+    pub length: usize,
+}
+
 /// If the points are at the exact same position, no force is applied
 #[derive(Clone, Copy, Debug)]
 pub struct LinearSpring {
@@ -1027,6 +1109,12 @@ impl SoftBodyBuilder {
             }
         }
 
+        for attatchment_point in &mut self.soft_body.attatchment_points {
+            if attatchment_point.start_point >= self.soft_body.shape.len() {
+                panic!("Unused attatchment point {attatchment_point:?}");
+            }
+        }
+
         self.soft_body
     }
 
@@ -1188,6 +1276,14 @@ impl SoftBodyBuilder {
 
     pub fn friction(mut self, friction: f32) -> Self {
         self.base_line.friction = friction;
+        self
+    }
+
+    pub fn with_attatchment_point(mut self, length: usize) -> Self {
+        self.soft_body.attatchment_points.push(AttatchmentPoint {
+            start_point: self.soft_body.shape.len().checked_sub(1).unwrap(),
+            length,
+        });
         self
     }
 }
