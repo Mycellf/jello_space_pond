@@ -171,7 +171,7 @@ fn assemble_simulation() -> Simulation {
 
     simulation.soft_bodies.insert({
         let mut soft_body = SoftBodyBuilder::default()
-            .offset(10.0, -10.0)
+            .offset(7.0, -10.0)
             .subdivisions(2)
             .point(0.0, 0.0)
             .with_internal_spring_start(0)
@@ -183,16 +183,16 @@ fn assemble_simulation() -> Simulation {
             .with_internal_spring_end(1, diagonal_spring)
             .build();
 
-        soft_body.shape[1].0.position.x -= 0.3;
-        soft_body.shape[2].0.position.x -= 0.6;
-        soft_body.shape[3].0.position.x -= 0.9;
+        soft_body.shape[1].0.position.x -= 0.2;
+        soft_body.shape[2].0.position.x -= 0.4;
+        soft_body.shape[3].0.position.x -= 0.6;
 
         soft_body
     });
 
     simulation.soft_bodies.insert(
         SoftBodyBuilder::default()
-            .offset(3.0, -5.0)
+            .offset(0.0, -5.0)
             .subdivisions(2)
             .point(0.0, 0.0)
             .with_internal_spring_start(0)
