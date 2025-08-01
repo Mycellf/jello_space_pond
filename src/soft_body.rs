@@ -22,6 +22,9 @@ pub struct SoftBody {
     pub bounding_box: BoundingBox,
     pub gas_force: f32,
     pub pressure: f32,
+
+    pub vertices: Vec<Vertex>,
+    pub indices: Vec<u16>,
 }
 
 impl SoftBody {
@@ -36,32 +39,24 @@ impl SoftBody {
             bounding_box: BoundingBox::default(),
             gas_force,
             pressure: 0.0,
+
+            vertices: Vec::new(),
+            indices: Vec::new(),
         }
     }
 
     /// CREDIT: tirithen <https://github.com/not-fl3/macroquad/issues/174#issuecomment-817203498>
-    /// (made to work with convex polygons via earcut)
     pub fn fill_color(&self, color: Color) {
-        static EARCUT: LazyLock<Mutex<Earcut<f32>>> = LazyLock::new(|| Mutex::new(Earcut::new()));
-
-        let mut vertices = Vec::with_capacity(self.shape.len() + 2);
-        let mut indices = Vec::with_capacity(self.shape.len() * 3);
-
-        for (Point { position, .. }, _) in self.shape.iter() {
-            let vertex = Vertex::new(position.x, position.y, 0.0, 0.0, 0.0, color);
-
-            vertices.push(vertex);
-        }
-
-        EARCUT.lock().unwrap().earcut(
-            self.shape.iter().map(|(point, _)| point.position.into()),
-            &[],
-            &mut indices,
-        );
-
         let mesh = Mesh {
-            vertices,
-            indices,
+            vertices: self
+                .vertices
+                .iter()
+                .map(|vertex| Vertex {
+                    color: color.into(),
+                    ..*vertex
+                })
+                .collect(),
+            indices: self.indices.clone(),
             texture: None,
         };
 
@@ -245,7 +240,7 @@ impl SoftBody {
     pub fn get_friction_of_point(&self, i: usize) -> Option<f32> {
         let [line_a, line_b] = self.get_adjacent_lines_to_point(i)?;
 
-        Some((line_a.friction + line_b.friction) / 2.0)
+        Some(utils::combine_friction(line_a.friction, line_b.friction).sqrt())
     }
 
     pub fn contains_point(&self, point: Vec2) -> bool {
@@ -547,6 +542,30 @@ impl SoftBody {
 
         false
     }
+
+    /// CREDIT: tirithen <https://github.com/not-fl3/macroquad/issues/174#issuecomment-817203498>
+    /// (made to work with convex polygons via earcut)
+    pub fn update_triangulation(&mut self) {
+        static EARCUT: LazyLock<Mutex<Earcut<f32>>> = LazyLock::new(|| Mutex::new(Earcut::new()));
+
+        self.vertices.clear();
+        self.indices.clear();
+
+        self.vertices.reserve(self.shape.len() + 2);
+        self.indices.reserve(self.shape.len() * 3);
+
+        for (Point { position, .. }, _) in self.shape.iter() {
+            let vertex = Vertex::new(position.x, position.y, 0.0, 0.0, 0.0, colors::WHITE);
+
+            self.vertices.push(vertex);
+        }
+
+        EARCUT.lock().unwrap().earcut(
+            self.shape.iter().map(|(point, _)| point.position.into()),
+            &[],
+            &mut self.indices,
+        );
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -597,7 +616,7 @@ impl Default for Line {
     fn default() -> Self {
         Self {
             spring: LinearSpring::default(),
-            friction: 0.25,
+            friction: 0.5,
         }
     }
 }
@@ -833,13 +852,7 @@ pub struct SoftBodyBuilder {
 impl Default for SoftBodyBuilder {
     fn default() -> Self {
         Self {
-            soft_body: SoftBody {
-                shape: Vec::new(),
-                internal_springs: Vec::new(),
-                bounding_box: BoundingBox::default(),
-                gas_force: 0.0,
-                pressure: 0.0,
-            },
+            soft_body: SoftBody::new(Vec::new(), Vec::new(), 0.0),
             internal_springs: Vec::new(),
 
             base_point: Point::default(),

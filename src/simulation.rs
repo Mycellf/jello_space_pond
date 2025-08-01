@@ -88,6 +88,10 @@ impl Simulation {
 
             i += 1;
         }
+
+        for (_, soft_body) in &mut self.soft_bodies {
+            soft_body.update_triangulation();
+        }
     }
 
     pub fn insert_constraint(&mut self, mut constraint: Constraint) -> ConstraintKey {
