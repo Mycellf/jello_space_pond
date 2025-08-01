@@ -1,4 +1,4 @@
-use macroquad::color::{Color, colors};
+use macroquad::color::colors;
 use slotmap::{HopSlotMap, new_key_type};
 
 use crate::{constraint::Constraint, soft_body::SoftBody};
@@ -27,10 +27,7 @@ impl Simulation {
 
     pub fn draw(&self, debug: bool) {
         for (_, soft_body) in &self.soft_bodies {
-            soft_body.fill_color(Color {
-                a: 0.75,
-                ..colors::WHITE
-            });
+            soft_body.fill_color(colors::WHITE);
 
             if debug {
                 soft_body.draw_springs();
