@@ -560,7 +560,7 @@ impl SoftBody {
                 let (a1, _, b1) = self.get_line(i).unwrap();
                 let (a2, _, b2) = self.get_line(j).unwrap();
 
-                if utils::are_lines_intersecting(
+                if utils::are_line_segments_intersecting(
                     [a1.position, b1.position],
                     [a2.position, b2.position],
                 ) {

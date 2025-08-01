@@ -73,7 +73,9 @@ pub fn combine_friction_to_point(a: f32, b: f32) -> f32 {
 }
 
 /// CREDIT: Wikipedia: <https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection>
-pub fn are_lines_intersecting([a1, b1]: [Vec2; 2], [a2, b2]: [Vec2; 2]) -> bool {
+///
+/// Lines are interpreted as not containing their endpoints
+pub fn are_line_segments_intersecting([a1, b1]: [Vec2; 2], [a2, b2]: [Vec2; 2]) -> bool {
     let first_bounding_box = BoundingBox::fit_points(a1, b1);
     let second_bounding_box = BoundingBox::fit_points(a2, b2);
 
@@ -81,23 +83,13 @@ pub fn are_lines_intersecting([a1, b1]: [Vec2; 2], [a2, b2]: [Vec2; 2]) -> bool 
         return false;
     }
 
-    let first_determinant = a1.perp_dot(b1);
-    let second_determinant = a2.perp_dot(b2);
+    let t_times_divisor = vec2(a1.x - a2.x, a2.x - b2.x).perp_dot(vec2(a1.y - a2.y, a2.y - b2.y));
+    let u_times_divisor = vec2(a1.x - b1.x, a1.x - a2.x).perp_dot(vec2(a1.y - b1.y, a1.y - b1.y));
 
-    let first_x_determinant = vec2(a1.x, 1.0).perp_dot(vec2(b1.x, 1.0));
-    let second_x_determinant = vec2(a2.x, 1.0).perp_dot(vec2(b2.x, 1.0));
+    let divisor = vec2(a1.x - b1.x, a2.x - b2.x).perp_dot(vec2(a1.y - b1.y, a2.y - b2.y));
 
-    let first_y_determinant = vec2(a1.y, 1.0).perp_dot(vec2(b1.y, 1.0));
-    let second_y_determinant = vec2(a2.y, 1.0).perp_dot(vec2(b2.y, 1.0));
-
-    let intersection = vec2(
-        vec2(first_determinant, first_x_determinant)
-            .perp_dot(vec2(second_determinant, second_x_determinant)),
-        vec2(first_determinant, first_y_determinant)
-            .perp_dot(vec2(second_determinant, second_y_determinant)),
-    ) / vec2(first_x_determinant, first_y_determinant)
-        .perp_dot(vec2(second_x_determinant, second_y_determinant));
-
-    first_bounding_box.contains_point(intersection)
-        && second_bounding_box.contains_point(intersection)
+    t_times_divisor > 0.0
+        && t_times_divisor < divisor
+        && u_times_divisor > 0.0
+        && u_times_divisor < divisor
 }
