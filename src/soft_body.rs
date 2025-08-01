@@ -29,6 +29,7 @@ pub struct SoftBody {
 
 impl SoftBody {
     pub const DEBRIS_DECAY_TIME: f32 = 2.0;
+    pub const DEBRIS_MASS: f32 = 0.1;
 
     pub fn new(
         shape: Vec<(Point, Line)>,
@@ -108,11 +109,10 @@ impl SoftBody {
         if let Some(debris_age) = &mut self.debris_age {
             *debris_age += dt;
 
-            for (Point { mass, .. }, Line { spring, .. }) in &mut self.shape {
+            for (_, Line { spring, .. }) in &mut self.shape {
                 let progress = (1.0 - *debris_age / Self::DEBRIS_DECAY_TIME).clamp(0.0, 1.0);
 
                 spring.force_constant = LinearSpring::default().force_constant * progress;
-                *mass = progress.max(0.1);
             }
         }
 
@@ -604,7 +604,7 @@ impl SoftBody {
                         ..Default::default()
                     };
 
-                    point_a.mass = 1.0;
+                    point_a.mass = Self::DEBRIS_MASS;
                     point_a.spring = None;
                 }
 
