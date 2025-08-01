@@ -42,7 +42,10 @@ impl SoftBody {
     pub const FILL_COLOR: Color = colors::LIGHTGRAY;
 
     pub const ATTATCHMENT_POINT_PADDING: f32 = 0.25;
+
     pub const ATTATCHMENT_POINT_THICKNESS: f32 = 0.05;
+    pub const ATTATCHMENT_POINT_THICKNESS_SELECTED: f32 = 0.1;
+
     pub const ATTATCHMENT_POINT_COLOR: Color = colors::WHITE;
     pub const ATTATCHMENT_POINT_COLOR_USED: Color =
         utils::color_lerp(colors::LIGHTGRAY, colors::WHITE, 0.5);
@@ -74,59 +77,69 @@ impl SoftBody {
     }
 
     pub fn draw_attatchment_points(&self) {
-        for attatchment_point in &self.attatchment_points {
-            let mut i = attatchment_point.start_point;
+        for i in 0..self.attatchment_points.len() {
+            self.draw_attatchment_point(i, false);
+        }
+    }
 
-            let color = if attatchment_point.connection.is_none() {
-                Self::ATTATCHMENT_POINT_COLOR
-            } else {
-                Self::ATTATCHMENT_POINT_COLOR_USED
-            };
+    pub fn draw_attatchment_point(&self, index: usize, selected: bool) {
+        let attatchment_point = self.attatchment_points[index];
 
-            if attatchment_point.length < 3 {
-                if attatchment_point.length < 2 {
-                    let (Point { position: a, .. }, _) = self.shape[i];
-                    shapes::draw_circle(a.x, a.y, Self::ATTATCHMENT_POINT_THICKNESS, color);
-                    continue;
-                }
+        let mut i = attatchment_point.start_point;
 
-                let (&Point { position: a, .. }, _, &Point { position: b, .. }) =
-                    self.get_line(i).unwrap();
-                utils::draw_line(
-                    a + (b - a) * Self::ATTATCHMENT_POINT_PADDING,
-                    b - (b - a) * Self::ATTATCHMENT_POINT_PADDING,
-                    Self::ATTATCHMENT_POINT_THICKNESS,
-                    color,
-                );
-                continue;
+        let color = if attatchment_point.connection.is_some() {
+            Self::ATTATCHMENT_POINT_COLOR_USED
+        } else {
+            Self::ATTATCHMENT_POINT_COLOR
+        };
+
+        let thickness = if selected {
+            Self::ATTATCHMENT_POINT_THICKNESS_SELECTED
+        } else {
+            Self::ATTATCHMENT_POINT_THICKNESS
+        };
+
+        if attatchment_point.length < 3 {
+            if attatchment_point.length < 2 {
+                let (Point { position: a, .. }, _) = self.shape[i];
+                shapes::draw_circle(a.x, a.y, thickness, color);
+                return;
             }
 
             let (&Point { position: a, .. }, _, &Point { position: b, .. }) =
                 self.get_line(i).unwrap();
             utils::draw_line(
                 a + (b - a) * Self::ATTATCHMENT_POINT_PADDING,
-                b,
-                Self::ATTATCHMENT_POINT_THICKNESS,
+                b - (b - a) * Self::ATTATCHMENT_POINT_PADDING,
+                thickness,
                 color,
             );
-            i = self.next_point(i);
+            return;
+        }
 
-            for _ in 3..attatchment_point.length {
-                let (&Point { position: a, .. }, _, &Point { position: b, .. }) =
-                    self.get_line(i).unwrap();
-                utils::draw_line(a, b, Self::ATTATCHMENT_POINT_THICKNESS, color);
-                i = self.next_point(i);
-            }
+        let (&Point { position: a, .. }, _, &Point { position: b, .. }) = self.get_line(i).unwrap();
+        utils::draw_line(
+            a + (b - a) * Self::ATTATCHMENT_POINT_PADDING,
+            b,
+            thickness,
+            color,
+        );
+        i = self.next_point(i);
 
+        for _ in 3..attatchment_point.length {
             let (&Point { position: a, .. }, _, &Point { position: b, .. }) =
                 self.get_line(i).unwrap();
-            utils::draw_line(
-                a,
-                b - (b - a) * Self::ATTATCHMENT_POINT_PADDING,
-                Self::ATTATCHMENT_POINT_THICKNESS,
-                color,
-            );
+            utils::draw_line(a, b, thickness, color);
+            i = self.next_point(i);
         }
+
+        let (&Point { position: a, .. }, _, &Point { position: b, .. }) = self.get_line(i).unwrap();
+        utils::draw_line(
+            a,
+            b - (b - a) * Self::ATTATCHMENT_POINT_PADDING,
+            thickness,
+            color,
+        );
     }
 
     /// CREDIT: tirithen <https://github.com/not-fl3/macroquad/issues/174#issuecomment-817203498>
@@ -1035,6 +1048,13 @@ impl BoundingBox {
             && point.y > self.min_corner.y
             && point.x < self.max_corner().x
             && point.y < self.max_corner().y
+    }
+
+    pub fn point_within_distance(&self, point: Vec2, distance: f32) -> bool {
+        point.x > self.min_corner.x - distance
+            && point.y > self.min_corner.y - distance
+            && point.x < self.max_corner().x + distance
+            && point.y < self.max_corner().y + distance
     }
 
     pub fn intersects_other(&self, other: &BoundingBox) -> bool {
