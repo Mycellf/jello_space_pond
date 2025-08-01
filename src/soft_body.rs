@@ -240,7 +240,10 @@ impl SoftBody {
     pub fn get_friction_of_point(&self, i: usize) -> Option<f32> {
         let [line_a, line_b] = self.get_adjacent_lines_to_point(i)?;
 
-        Some(utils::combine_friction(line_a.friction, line_b.friction).sqrt())
+        Some(utils::combine_friction_to_point(
+            line_a.friction,
+            line_b.friction,
+        ))
     }
 
     pub fn contains_point(&self, point: Vec2) -> bool {

@@ -65,7 +65,11 @@ pub fn draw_line(start: Vec2, end: Vec2, thickness: f32, color: Color) {
 }
 
 pub fn combine_friction(a: f32, b: f32) -> f32 {
-    (a + b) / 2.0
+    a * b
+}
+
+pub fn combine_friction_to_point(a: f32, b: f32) -> f32 {
+    a.max(b)
 }
 
 /// CREDIT: Wikipedia: <https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection>
