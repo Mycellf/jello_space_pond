@@ -209,8 +209,8 @@ fn assemble_simulation() -> Simulation {
         SoftBodyBuilder::default()
             .gas_force(50.0)
             .mass(10.0)
-            .velocity(3.0, -3.0)
-            .offset(-12.0, 7.75)
+            .velocity(4.0, -4.0)
+            .offset(-11.1, 7.75)
             .point(0.0, 0.0)
             .with_internal_spring_start(0)
             .with_spring(LinearSpring {
