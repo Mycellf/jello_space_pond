@@ -617,7 +617,7 @@ impl SoftBody {
                 soft_body.debris_age = Some(0.0);
                 soft_body
             })
-            .filter(|shape| shape.area() > 0.001)
+            .filter(|shape| shape.area() > 0.01)
             .collect()
     }
 }
