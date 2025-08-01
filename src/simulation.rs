@@ -1,4 +1,4 @@
-use macroquad::color::colors;
+use macroquad::color::{Color, colors};
 use slotmap::{HopSlotMap, new_key_type};
 
 use crate::{constraint::Constraint, soft_body::SoftBody};
@@ -27,7 +27,10 @@ impl Simulation {
 
     pub fn draw(&self, debug: bool) {
         for (_, soft_body) in &self.soft_bodies {
-            soft_body.fill_color(colors::WHITE);
+            soft_body.fill_color(Color {
+                a: 0.75,
+                ..colors::WHITE
+            });
 
             if debug {
                 soft_body.draw_springs();
@@ -70,6 +73,20 @@ impl Simulation {
                     second.check_points_against_other_one_sided(first);
                 }
             }
+        }
+
+        let mut i = 0;
+
+        while i < self.keys.len() {
+            let key = self.keys[i];
+
+            if self.soft_bodies[key].is_self_intersecting() {
+                self.soft_bodies.remove(key);
+                self.keys.swap_remove(i);
+                continue;
+            }
+
+            i += 1;
         }
     }
 

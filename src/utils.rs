@@ -1,4 +1,12 @@
-use macroquad::{camera::Camera2D, color::Color, input, math::Vec2, shapes, window};
+use macroquad::{
+    camera::Camera2D,
+    color::Color,
+    input,
+    math::{Vec2, vec2},
+    shapes, window,
+};
+
+use crate::soft_body::BoundingBox;
 
 #[must_use]
 pub fn exp_decay_cutoff(a: f32, b: f32, decay: f32, dt: f32, cutoff: f32) -> (f32, bool) {
@@ -58,4 +66,34 @@ pub fn draw_line(start: Vec2, end: Vec2, thickness: f32, color: Color) {
 
 pub fn combine_friction(a: f32, b: f32) -> f32 {
     (a + b) / 2.0
+}
+
+/// CREDIT: Wikipedia: <https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection>
+pub fn are_lines_intersecting([a1, b1]: [Vec2; 2], [a2, b2]: [Vec2; 2]) -> bool {
+    let first_bounding_box = BoundingBox::fit_points(a1, b1);
+    let second_bounding_box = BoundingBox::fit_points(a2, b2);
+
+    if !first_bounding_box.intersects_other(&second_bounding_box) {
+        return false;
+    }
+
+    let first_determinant = a1.perp_dot(b1);
+    let second_determinant = a2.perp_dot(b2);
+
+    let first_x_determinant = vec2(a1.x, 1.0).perp_dot(vec2(b1.x, 1.0));
+    let second_x_determinant = vec2(a2.x, 1.0).perp_dot(vec2(b2.x, 1.0));
+
+    let first_y_determinant = vec2(a1.y, 1.0).perp_dot(vec2(b1.y, 1.0));
+    let second_y_determinant = vec2(a2.y, 1.0).perp_dot(vec2(b2.y, 1.0));
+
+    let intersection = vec2(
+        vec2(first_determinant, first_x_determinant)
+            .perp_dot(vec2(second_determinant, second_x_determinant)),
+        vec2(first_determinant, first_y_determinant)
+            .perp_dot(vec2(second_determinant, second_y_determinant)),
+    ) / vec2(first_x_determinant, first_y_determinant)
+        .perp_dot(vec2(second_x_determinant, second_y_determinant));
+
+    first_bounding_box.contains_point(intersection)
+        && second_bounding_box.contains_point(intersection)
 }

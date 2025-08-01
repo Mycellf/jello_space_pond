@@ -527,6 +527,26 @@ impl SoftBody {
 
         double_area / 2.0
     }
+
+    pub fn is_self_intersecting(&self) -> bool {
+        for i in 2..self.shape.len() {
+            let start = if i == self.shape.len() - 1 { 1 } else { 0 };
+
+            for j in start..i - 1 {
+                let (a1, _, b1) = self.get_line(i).unwrap();
+                let (a2, _, b2) = self.get_line(j).unwrap();
+
+                if utils::are_lines_intersecting(
+                    [a1.position, b1.position],
+                    [a2.position, b2.position],
+                ) {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -780,6 +800,19 @@ impl BoundingBox {
             && other.max_corner().y > self.min_corner.y
             && other.min_corner.x < self.max_corner().x
             && other.min_corner.y < self.max_corner().y
+    }
+
+    pub fn fit_points(a: Vec2, b: Vec2) -> Self {
+        let min_x = a.x.min(b.x);
+        let max_x = a.x.max(b.x);
+
+        let min_y = a.y.min(b.y);
+        let max_y = a.y.max(b.y);
+
+        Self {
+            min_corner: vec2(min_x, min_y),
+            size: vec2(max_x - min_x, max_y - min_y),
+        }
     }
 }
 
