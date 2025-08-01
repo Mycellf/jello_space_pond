@@ -1,10 +1,7 @@
 use macroquad::color::colors;
 use slotmap::{HopSlotMap, new_key_type};
 
-use crate::{
-    constraint::{Constraint, PointHandle},
-    soft_body::SoftBody,
-};
+use crate::{constraint::Constraint, soft_body::SoftBody};
 
 pub struct Simulation {
     pub soft_bodies: HopSlotMap<SoftBodyKey, SoftBody>,
@@ -47,8 +44,18 @@ impl Simulation {
             soft_body.apply_impulse_and_velocity(dt);
         }
 
-        for (_, constraint) in &mut self.constraints {
+        let mut empty_constraints = Vec::new();
+
+        for (key, constraint) in &mut self.constraints {
             constraint.apply_to_soft_bodies(&mut self.soft_bodies);
+
+            if constraint.is_empty() {
+                empty_constraints.push(key);
+            }
+        }
+
+        for key in empty_constraints {
+            self.remove_constraint(key, None);
         }
 
         for (i, &first_key) in self.keys.iter().enumerate().skip(1) {
@@ -66,46 +73,43 @@ impl Simulation {
         }
     }
 
-    pub fn insert_constraint(&mut self, constraint: Constraint) -> ConstraintKey {
-        let mut keys_to_remove = Vec::new();
+    pub fn insert_constraint(&mut self, mut constraint: Constraint) -> ConstraintKey {
+        let mut keys_to_replace = Vec::new();
 
         let key = self.constraints.insert_with_key(|key| {
-            match &constraint {
-                Constraint::HoldTogether { points } => {
-                    for &PointHandle { soft_body, index } in points {
-                        let point = &mut self.soft_bodies[soft_body].shape[index].0;
-
-                        if let Some(key) = point.constraint {
-                            keys_to_remove.push(key);
-                        }
-
-                        point.constraint = Some(key);
-                    }
-                }
-            }
-
+            constraint.insert(key, &mut self.soft_bodies, &mut keys_to_replace);
             constraint
         });
 
-        for key in keys_to_remove {
-            self.remove_constraint(key);
+        for key_to_replace in keys_to_replace {
+            self.remove_constraint(key_to_replace, Some(key));
         }
 
         key
     }
 
-    pub fn remove_constraint(&mut self, key: ConstraintKey) -> Option<Constraint> {
+    pub fn remove_constraint(
+        &mut self,
+        key: ConstraintKey,
+        replacement: Option<ConstraintKey>,
+    ) -> Option<Constraint> {
         let constraint = self.constraints.remove(key);
 
         if let Some(constraint) = constraint {
-            match &constraint {
-                Constraint::HoldTogether { points } => {
-                    for &PointHandle { soft_body, index } in points {
-                        let point = &mut self.soft_bodies[soft_body].shape[index].0;
+            let mut points_to_replace = Vec::new();
+            constraint.remove(
+                key,
+                replacement,
+                &mut self.soft_bodies,
+                &mut points_to_replace,
+            );
 
-                        if point.constraint == Some(key) {
-                            point.constraint = None;
-                        }
+            if let Some(replacement) = replacement {
+                let constraint = &mut self.constraints[replacement];
+
+                for point in points_to_replace {
+                    match constraint {
+                        Constraint::HoldTogether { points } => points.push(point),
                     }
                 }
             }
