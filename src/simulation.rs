@@ -27,6 +27,10 @@ impl Simulation {
     pub fn draw(&self, debug: bool) {
         for (_, soft_body) in &self.soft_bodies {
             soft_body.draw();
+        }
+
+        for (_, soft_body) in &self.soft_bodies {
+            soft_body.draw_attatchment_points();
 
             if debug {
                 soft_body.draw_springs();

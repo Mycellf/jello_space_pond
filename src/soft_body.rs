@@ -41,6 +41,8 @@ impl SoftBody {
     pub const ATTATCHMENT_POINT_PADDING: f32 = 0.25;
     pub const ATTATCHMENT_POINT_THICKNESS: f32 = 0.05;
     pub const ATTATCHMENT_POINT_COLOR: Color = colors::WHITE;
+    pub const ATTATCHMENT_POINT_COLOR_USED: Color =
+        utils::color_lerp(colors::LIGHTGRAY, colors::WHITE, 0.5);
 
     pub fn new(
         shape: Vec<(Point, Line)>,
@@ -66,23 +68,34 @@ impl SoftBody {
 
     pub fn draw(&self) {
         self.fill_color(Self::FILL_COLOR);
-
-        self.draw_attatchment_points();
     }
 
     pub fn draw_attatchment_points(&self) {
         for attatchment_point in &self.attatchment_points {
             let mut i = attatchment_point.start_point;
 
+            let reference_point = if attatchment_point.length < 2 {
+                i
+            } else {
+                self.next_point(i)
+            };
+
+            let color = if let (
+                Point {
+                    constraint: None, ..
+                },
+                _,
+            ) = self.shape[reference_point]
+            {
+                Self::ATTATCHMENT_POINT_COLOR
+            } else {
+                Self::ATTATCHMENT_POINT_COLOR_USED
+            };
+
             if attatchment_point.length < 3 {
                 if attatchment_point.length < 2 {
                     let (Point { position: a, .. }, _) = self.shape[i];
-                    shapes::draw_circle(
-                        a.x,
-                        a.y,
-                        Self::ATTATCHMENT_POINT_THICKNESS,
-                        Self::ATTATCHMENT_POINT_COLOR,
-                    );
+                    shapes::draw_circle(a.x, a.y, Self::ATTATCHMENT_POINT_THICKNESS, color);
                     continue;
                 }
 
@@ -92,7 +105,7 @@ impl SoftBody {
                     a + (b - a) * Self::ATTATCHMENT_POINT_PADDING,
                     b - (b - a) * Self::ATTATCHMENT_POINT_PADDING,
                     Self::ATTATCHMENT_POINT_THICKNESS,
-                    Self::ATTATCHMENT_POINT_COLOR,
+                    color,
                 );
                 continue;
             }
@@ -103,19 +116,14 @@ impl SoftBody {
                 a + (b - a) * Self::ATTATCHMENT_POINT_PADDING,
                 b,
                 Self::ATTATCHMENT_POINT_THICKNESS,
-                Self::ATTATCHMENT_POINT_COLOR,
+                color,
             );
             i = self.next_point(i);
 
             for _ in 3..attatchment_point.length {
                 let (&Point { position: a, .. }, _, &Point { position: b, .. }) =
                     self.get_line(i).unwrap();
-                utils::draw_line(
-                    a,
-                    b,
-                    Self::ATTATCHMENT_POINT_THICKNESS,
-                    Self::ATTATCHMENT_POINT_COLOR,
-                );
+                utils::draw_line(a, b, Self::ATTATCHMENT_POINT_THICKNESS, color);
                 i = self.next_point(i);
             }
 
@@ -125,7 +133,7 @@ impl SoftBody {
                 a,
                 b - (b - a) * Self::ATTATCHMENT_POINT_PADDING,
                 Self::ATTATCHMENT_POINT_THICKNESS,
-                Self::ATTATCHMENT_POINT_COLOR,
+                color,
             );
         }
     }

@@ -272,7 +272,11 @@ fn assemble_simulation() -> Simulation {
             for i in 0..12 {
                 let angle = i as f32 / 12.0 * TAU;
 
-                builder = builder.point(angle.cos(), angle.sin())
+                builder = builder.point(angle.cos(), angle.sin());
+
+                if i % 3 == 2 {
+                    builder = builder.with_attatchment_point(4);
+                }
             }
 
             let key = simulation.soft_bodies.insert(builder.build());
@@ -289,7 +293,7 @@ fn assemble_simulation() -> Simulation {
             },
             PointHandle {
                 soft_body: keys[15],
-                index: 10,
+                index: 11,
             },
         ],
     });
@@ -302,7 +306,7 @@ fn assemble_simulation() -> Simulation {
             },
             PointHandle {
                 soft_body: keys[15],
-                index: 9,
+                index: 10,
             },
         ],
     });
@@ -312,6 +316,19 @@ fn assemble_simulation() -> Simulation {
             PointHandle {
                 soft_body: keys[14],
                 index: 4,
+            },
+            PointHandle {
+                soft_body: keys[15],
+                index: 9,
+            },
+        ],
+    });
+
+    simulation.insert_constraint(Constraint::HoldTogether {
+        points: vec![
+            PointHandle {
+                soft_body: keys[14],
+                index: 5,
             },
             PointHandle {
                 soft_body: keys[15],
