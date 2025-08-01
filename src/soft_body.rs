@@ -1,4 +1,7 @@
-use std::sync::{LazyLock, Mutex};
+use std::{
+    slice::GetDisjointMutError,
+    sync::{LazyLock, Mutex},
+};
 
 use earcut::Earcut;
 use macroquad::{
@@ -207,58 +210,68 @@ impl SoftBody {
         };
     }
 
+    pub fn next_point(&self, i: usize) -> usize {
+        if i < self.shape.len() - 1 { i + 1 } else { 0 }
+    }
+
+    pub fn previous_point(&self, i: usize) -> usize {
+        if i > 0 { i - 1 } else { self.shape.len() - 1 }
+    }
+
     pub fn get_line(&self, i: usize) -> Option<(&Point, &Line, &Point)> {
         let (point_a, line) = self.shape.get(i)?;
-        let (point_b, _) = &self.shape[if i < self.shape.len() - 1 { i + 1 } else { 0 }];
+        let (point_b, _) = &self.shape[self.next_point(i)];
 
         Some((point_a, line, point_b))
     }
 
     pub fn get_line_mut(&mut self, i: usize) -> Option<(&mut Point, &mut Line, &mut Point)> {
-        let length = self.shape.len();
-
-        if i >= length {
+        if i >= self.shape.len() {
             return None;
         }
 
-        let [(point_a, line), (point_b, _)] = self
-            .shape
-            .get_disjoint_mut([i, if i < length - 1 { i + 1 } else { 0 }])
-            .unwrap();
+        let next = self.next_point(i);
+
+        let [(point_a, line), (point_b, _)] = self.shape.get_disjoint_mut([i, next]).unwrap();
 
         Some((point_a, line, point_b))
     }
 
+    pub fn length_squared_of_line(&self, i: usize) -> Option<f32> {
+        let (point_a, _, point_b) = self.get_line(i)?;
+
+        Some(point_a.position.distance_squared(point_b.position))
+    }
+
+    pub fn length_of_line(&self, i: usize) -> Option<f32> {
+        Some(self.length_squared_of_line(i)?.sqrt())
+    }
+
     pub fn get_angle(&self, i: usize) -> Option<[&Point; 3]> {
         let (point_b, _) = self.shape.get(i)?;
-        let (point_c, _) = &self.shape[if i < self.shape.len() - 1 { i + 1 } else { 0 }];
-        let (point_a, _) = &self.shape[if i > 0 { i - 1 } else { self.shape.len() - 1 }];
+        let (point_c, _) = &self.shape[self.next_point(i)];
+        let (point_a, _) = &self.shape[self.previous_point(i)];
 
         Some([point_a, point_b, point_c])
     }
 
     pub fn get_angle_mut(&mut self, i: usize) -> Option<[&mut Point; 3]> {
-        let length = self.shape.len();
-
-        if i >= length {
+        if i >= self.shape.len() {
             return None;
         }
 
-        let [(point_a, _), (point_b, _), (point_c, _)] = self
-            .shape
-            .get_disjoint_mut([
-                if i > 0 { i - 1 } else { length - 1 },
-                i,
-                if i < length - 1 { i + 1 } else { 0 },
-            ])
-            .unwrap();
+        let next = self.next_point(i);
+        let previous = self.previous_point(i);
+
+        let [(point_a, _), (point_b, _), (point_c, _)] =
+            self.shape.get_disjoint_mut([previous, i, next]).unwrap();
 
         Some([point_a, point_b, point_c])
     }
 
     pub fn get_adjacent_lines_to_point(&self, i: usize) -> Option<[&Line; 2]> {
         let (_, line_b) = self.shape.get(i)?;
-        let (_, line_a) = &self.shape[if i > 0 { i - 1 } else { self.shape.len() - 1 }];
+        let (_, line_a) = &self.shape[self.previous_point(i)];
 
         Some([line_a, line_b])
     }
@@ -421,6 +434,65 @@ impl SoftBody {
         collided
     }
 
+    // pub fn resolve_all_self_intersections(&mut self) {
+    //     for i in 0..self.shape.len() {
+    //         let start = if i == self.shape.len() - 1 { 1 } else { 0 };
+    //
+    //         for j in start..i - 1 {
+    //             let (a1, _, b1) = self.get_line(i).unwrap();
+    //             let (a2, _, b2) = self.get_line(j).unwrap();
+    //
+    //             if let Some((intersection_point, [line_a_interpolation, line_b_interpolation])) =
+    //                 utils::intersection_point_of_line_segments(
+    //                     [a1.position, b1.position],
+    //                     [a2.position, b2.position],
+    //                 )
+    //             {
+    //                 self.resolve_self_intersection(
+    //                     i,
+    //                     j,
+    //                     line_a_interpolation,
+    //                     line_b_interpolation,
+    //                     intersection_point,
+    //                 );
+    //             }
+    //         }
+    //     }
+    // }
+    //
+    // pub fn resolve_self_intersection(
+    //     &mut self,
+    //     line_a: usize,
+    //     line_b: usize,
+    //     line_a_interpolation: f32,
+    //     line_b_interpolation: f32,
+    //     intersection_point: Vec2,
+    // ) {
+    //     let line_a_length = self.length_of_line(line_a).unwrap();
+    //     let line_b_length = self.length_of_line(line_b).unwrap();
+    //
+    //     let (minimum, _) = [
+    //         line_a_interpolation * line_a_length,
+    //         (1.0 - line_a_interpolation) * line_a_length,
+    //         line_b_interpolation * line_b_length,
+    //         (1.0 - line_b_interpolation) * line_b_length,
+    //     ]
+    //     .into_iter()
+    //     .enumerate()
+    //     .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+    //     .unwrap();
+    //
+    //     let (point, line, interpolation) = match minimum {
+    //         0 => (line_a, line_b, line_b_interpolation),
+    //         1 => (self.next_point(line_a), line_b, line_b_interpolation),
+    //         2 => (line_b, line_a, line_a_interpolation),
+    //         3 => (self.next_point(line_b), line_a, line_a_interpolation),
+    //         _ => unreachable!(),
+    //     };
+    //
+    //     self.check_own_point_against_line(point, line, intersection_point, interpolation);
+    // }
+
     pub fn check_other_point_against_line(
         &mut self,
         point: &mut Point,
@@ -450,12 +522,14 @@ impl SoftBody {
     ) {
         let point_friction = self.get_friction_of_point(point).unwrap();
 
-        let length = self.shape.len();
+        let next = self.next_point(line);
 
-        let [(point, _), (point_a, Line { friction, .. }), (point_b, _)] = self
-            .shape
-            .get_disjoint_mut([point, line, if line < length - 1 { line + 1 } else { 0 }])
-            .unwrap();
+        let [(point, _), (point_a, Line { friction, .. }), (point_b, _)] =
+            match self.shape.get_disjoint_mut([point, line, next]) {
+                Ok(value) => value,
+                Err(GetDisjointMutError::OverlappingIndices) => return,
+                Err(GetDisjointMutError::IndexOutOfBounds) => panic!("Index out of bounds"),
+            };
 
         Self::check_point_against_line(
             point_a,

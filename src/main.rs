@@ -272,7 +272,7 @@ fn assemble_simulation() -> Simulation {
                 .friction(1.0)
                 .mass(0.5)
                 .base_angular_spring(Some(AngularSpring {
-                    force_constant: 5.0,
+                    force_constant: 50.0,
                     damping: 5.0,
                     outwards: false,
                     ..Default::default()

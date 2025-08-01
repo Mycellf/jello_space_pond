@@ -72,24 +72,53 @@ pub fn combine_friction_to_point(a: f32, b: f32) -> f32 {
     a.max(b)
 }
 
+pub fn are_line_segments_intersecting([a1, b1]: [Vec2; 2], [a2, b2]: [Vec2; 2]) -> bool {
+    line_segment_intersection([a1, b1], [a2, b2]).is_some()
+}
+
+pub fn intersection_point_of_line_segments(
+    [a1, b1]: [Vec2; 2],
+    [a2, b2]: [Vec2; 2],
+) -> Option<(Vec2, [f32; 2])> {
+    let ([t_times_divisor, u_times_divisor], divisor) =
+        line_segment_intersection([a1, b1], [a2, b2])?;
+
+    let t = t_times_divisor / divisor;
+    let u = u_times_divisor / divisor;
+
+    Some((a1 + t * (b1 - a1), [t, u]))
+}
+
 /// CREDIT: Wikipedia: <https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection>
 ///
-/// Lines are interpreted as not containing their endpoints
-pub fn are_line_segments_intersecting([a1, b1]: [Vec2; 2], [a2, b2]: [Vec2; 2]) -> bool {
+/// If the lines intersect, returns `([progress along line segment times coeficient; 2], coeficient)`
+pub fn line_segment_intersection(
+    [a1, b1]: [Vec2; 2],
+    [a2, b2]: [Vec2; 2],
+) -> Option<([f32; 2], f32)> {
     let first_bounding_box = BoundingBox::fit_points(a1, b1);
     let second_bounding_box = BoundingBox::fit_points(a2, b2);
 
     if !first_bounding_box.intersects_other(&second_bounding_box) {
-        return false;
+        return None;
     }
-
-    let t_times_divisor = vec2(a1.x - a2.x, a2.x - b2.x).perp_dot(vec2(a1.y - a2.y, a2.y - b2.y));
-    let u_times_divisor = -vec2(a1.x - b1.x, a1.x - a2.x).perp_dot(vec2(a1.y - b1.y, a1.y - a2.y));
 
     let divisor = vec2(a1.x - b1.x, a2.x - b2.x).perp_dot(vec2(a1.y - b1.y, a2.y - b2.y));
 
-    t_times_divisor > 0.0
-        && t_times_divisor < divisor
-        && u_times_divisor > 0.0
-        && u_times_divisor < divisor
+    let t_times_divisor =
+        vec2(a1.x - a2.x, a2.x - b2.x).perp_dot(vec2(a1.y - a2.y, a2.y - b2.y)) * divisor.signum();
+    let u_times_divisor =
+        -vec2(a1.x - b1.x, a1.x - a2.x).perp_dot(vec2(a1.y - b1.y, a1.y - a2.y)) * divisor.signum();
+
+    let divisor = divisor.abs();
+
+    if divisor <= f32::EPSILON {
+        return None;
+    }
+
+    (t_times_divisor >= 0.0
+        && t_times_divisor <= divisor
+        && u_times_divisor >= 0.0
+        && u_times_divisor <= divisor)
+        .then(|| ([t_times_divisor, u_times_divisor], divisor))
 }
