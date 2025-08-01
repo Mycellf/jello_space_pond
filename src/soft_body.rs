@@ -760,13 +760,9 @@ impl AngularSpring {
         const WEAK_COLOR: Color = colors::GREEN;
         const STRONG_COLOR: Color = colors::RED;
 
-        let forces = self.get_forces(point_a, point_b, point_c);
+        let (total_force, _) = self.get_forces(point_a, point_b, point_c);
 
-        let color = utils::color_lerp(
-            WEAK_COLOR,
-            STRONG_COLOR,
-            (forces.iter().copied().map(Vec2::length).sum::<f32>() / 6.0).clamp(0.0, 1.0),
-        );
+        let color = utils::color_lerp(WEAK_COLOR, STRONG_COLOR, total_force.clamp(0.0, 1.0));
 
         shapes::draw_circle(point_b.position.x, point_b.position.y, 0.1, color);
     }
@@ -778,25 +774,33 @@ impl AngularSpring {
         point_c: &mut Point,
         dt: f32,
     ) {
-        let [impulse_a, impulse_b, impulse_c] = self.get_forces(point_a, point_b, point_c);
+        let (_, [impulse_a, impulse_b, impulse_c]) = self.get_forces(point_a, point_b, point_c);
 
         point_a.impulse += impulse_a * dt;
         point_b.impulse += impulse_b * dt;
         point_c.impulse += impulse_c * dt;
     }
 
-    pub fn get_forces(&self, point_a: &Point, point_b: &Point, point_c: &Point) -> [Vec2; 3] {
+    pub fn get_forces(
+        &self,
+        point_a: &Point,
+        point_b: &Point,
+        point_c: &Point,
+    ) -> (f32, [Vec2; 3]) {
         let base_direction = point_b.position - point_a.position;
         let measure_direction = point_c.position - point_b.position;
 
-        if base_direction == Vec2::ZERO || measure_direction == Vec2::ZERO {
-            return [Vec2::ZERO; 3];
+        let point_a_distance = base_direction.length();
+        let point_c_distance = measure_direction.length();
+
+        if point_a_distance == 0.0 || point_c_distance == 0.0 {
+            return (0.0, [Vec2::ZERO; 3]);
         }
 
         let angle = base_direction.angle_between(measure_direction);
 
-        let point_a_normal = base_direction.normalize_or_zero().perp();
-        let point_c_normal = measure_direction.normalize_or_zero().perp();
+        let point_a_normal = base_direction.perp() / point_a_distance;
+        let point_c_normal = measure_direction.perp() / point_c_distance;
 
         let angular_velocity_a =
             (point_a.velocity - point_b.velocity).dot(point_a_normal) / base_direction.length();
@@ -816,14 +820,17 @@ impl AngularSpring {
 
         total_force = total_force.clamp(-self.force_constant * 10.0, self.force_constant * 10.0);
 
-        let point_a_force = point_a_normal * total_force / base_direction.length();
-        let point_c_force = point_c_normal * total_force / measure_direction.length();
+        let point_a_force = point_a_normal * total_force * point_a_distance;
+        let point_c_force = point_c_normal * total_force * point_c_distance;
 
-        [
-            point_a_force,
-            -(point_a_force + point_c_force),
-            point_c_force,
-        ]
+        (
+            total_force,
+            [
+                point_a_force,
+                -(point_a_force + point_c_force),
+                point_c_force,
+            ],
+        )
     }
 }
 
@@ -831,8 +838,8 @@ impl Default for AngularSpring {
     fn default() -> Self {
         Self {
             target_angle: 0.0,
-            force_constant: 1.0,
-            damping: 1.0,
+            force_constant: 10.0,
+            damping: 10.0,
             inwards: true,
             outwards: true,
         }

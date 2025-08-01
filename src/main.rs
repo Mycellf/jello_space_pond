@@ -216,7 +216,7 @@ fn assemble_simulation() -> Simulation {
             .gas_force(50.0)
             .mass(10.0)
             .velocity(5.0, -5.0)
-            .offset(-12.4, 7.75)
+            .offset(-11.1, 7.75)
             .point(0.0, 0.0)
             .with_internal_spring_start(0)
             .with_spring(LinearSpring {
@@ -272,8 +272,8 @@ fn assemble_simulation() -> Simulation {
                 .friction(1.0)
                 .mass(0.5)
                 .base_angular_spring(Some(AngularSpring {
-                    force_constant: 0.5,
-                    damping: 0.1,
+                    force_constant: 5.0,
+                    damping: 5.0,
                     outwards: false,
                     ..Default::default()
                 }))
