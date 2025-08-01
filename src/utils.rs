@@ -84,7 +84,7 @@ pub fn are_line_segments_intersecting([a1, b1]: [Vec2; 2], [a2, b2]: [Vec2; 2]) 
     }
 
     let t_times_divisor = vec2(a1.x - a2.x, a2.x - b2.x).perp_dot(vec2(a1.y - a2.y, a2.y - b2.y));
-    let u_times_divisor = vec2(a1.x - b1.x, a1.x - a2.x).perp_dot(vec2(a1.y - b1.y, a1.y - b1.y));
+    let u_times_divisor = -vec2(a1.x - b1.x, a1.x - a2.x).perp_dot(vec2(a1.y - b1.y, a1.y - a2.y));
 
     let divisor = vec2(a1.x - b1.x, a2.x - b2.x).perp_dot(vec2(a1.y - b1.y, a2.y - b2.y));
 
