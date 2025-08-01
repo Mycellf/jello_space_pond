@@ -8,7 +8,7 @@ use std::f32::consts::{SQRT_2, TAU};
 use macroquad::{
     camera::{self, Camera2D},
     color::colors,
-    input::{self, KeyCode},
+    input::{self, KeyCode, MouseButton},
     math::{Vec2, vec2},
     shapes,
     window::{self, Conf},
@@ -92,8 +92,14 @@ async fn main() {
 
         let mouse_position = utils::mouse_position(&camera);
 
-        for (_, soft_body) in &simulation.soft_bodies {
+        for (key, soft_body) in &simulation.soft_bodies {
             if soft_body.contains_point(mouse_position) {
+                if input::is_mouse_button_pressed(MouseButton::Left) {
+                    simulation.destroy_soft_body(key, None);
+
+                    break;
+                }
+
                 soft_body.bounding_box.draw();
 
                 let (closest_line, closest_point, _, _) =
@@ -210,7 +216,7 @@ fn assemble_simulation() -> Simulation {
             .gas_force(50.0)
             .mass(10.0)
             .velocity(4.0, -4.0)
-            .offset(-11.1, 7.75)
+            .offset(-12.0, 7.75)
             .point(0.0, 0.0)
             .with_internal_spring_start(0)
             .with_spring(LinearSpring {

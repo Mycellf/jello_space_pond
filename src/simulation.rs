@@ -80,17 +80,44 @@ impl Simulation {
         while i < self.keys.len() {
             let key = self.keys[i];
 
-            if self.soft_bodies[key].is_self_intersecting() {
-                self.soft_bodies.remove(key);
-                self.keys.swap_remove(i);
-                continue;
+            let soft_body = &mut self.soft_bodies[key];
+
+            if let Some(debris_age) = soft_body.debris_age {
+                if debris_age >= SoftBody::DEBRIS_DECAY_TIME {
+                    self.soft_bodies.remove(key);
+                    self.keys.swap_remove(i);
+
+                    continue;
+                }
+            } else {
+                if soft_body.is_self_intersecting() {
+                    self.destroy_soft_body(key, Some(i));
+
+                    continue;
+                }
             }
+
+            soft_body.update_triangulation_indecies();
 
             i += 1;
         }
+    }
 
-        for (_, soft_body) in &mut self.soft_bodies {
-            soft_body.update_triangulation();
+    pub fn destroy_soft_body(&mut self, key: SoftBodyKey, key_index: Option<usize>) {
+        let soft_body = self.soft_bodies.remove(key).unwrap();
+        if let Some(i) = key_index {
+            self.keys.swap_remove(i);
+        }
+
+        for triangle in soft_body.decompose_into_triangles() {
+            let key = self.soft_bodies.insert(triangle);
+            if key_index.is_some() {
+                self.keys.push(key);
+            }
+        }
+
+        if key_index.is_none() {
+            self.update_keys();
         }
     }
 

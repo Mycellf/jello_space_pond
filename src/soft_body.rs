@@ -23,40 +23,54 @@ pub struct SoftBody {
     pub gas_force: f32,
     pub pressure: f32,
 
-    pub vertices: Vec<Vertex>,
-    pub indices: Vec<u16>,
+    pub triangle_indices: Vec<u16>,
+    pub debris_age: Option<f32>,
 }
 
 impl SoftBody {
+    pub const DEBRIS_DECAY_TIME: f32 = 2.0;
+
     pub fn new(
         shape: Vec<(Point, Line)>,
         internal_springs: Vec<([usize; 2], LinearSpring)>,
         gas_force: f32,
     ) -> Self {
-        Self {
+        let mut soft_body = Self {
             shape,
             internal_springs,
             bounding_box: BoundingBox::default(),
             gas_force,
             pressure: 0.0,
 
-            vertices: Vec::new(),
-            indices: Vec::new(),
-        }
+            triangle_indices: Vec::new(),
+            debris_age: None,
+        };
+
+        soft_body.update_triangulation_indecies();
+        soft_body
     }
 
     /// CREDIT: tirithen <https://github.com/not-fl3/macroquad/issues/174#issuecomment-817203498>
     pub fn fill_color(&self, color: Color) {
+        let color = if let Some(debris_age) = self.debris_age {
+            let progress = (1.0 - debris_age / Self::DEBRIS_DECAY_TIME / 1.25).clamp(0.0, 1.0);
+            Color {
+                a: color.a * progress.powi(2),
+                ..color
+            }
+        } else {
+            color
+        };
+
         let mesh = Mesh {
             vertices: self
-                .vertices
+                .shape
                 .iter()
-                .map(|vertex| Vertex {
-                    color: color.into(),
-                    ..*vertex
+                .map(|(Point { position, .. }, _)| {
+                    Vertex::new(position.x, position.y, 0.0, 0.0, 0.0, color)
                 })
                 .collect(),
-            indices: self.indices.clone(),
+            indices: self.triangle_indices.clone(),
             texture: None,
         };
 
@@ -90,6 +104,17 @@ impl SoftBody {
 
     pub fn apply_impulse_and_velocity(&mut self, dt: f32) {
         self.add_pressure_impulse(dt);
+
+        if let Some(debris_age) = &mut self.debris_age {
+            *debris_age += dt;
+
+            for (Point { mass, .. }, Line { spring, .. }) in &mut self.shape {
+                let progress = (1.0 - *debris_age / Self::DEBRIS_DECAY_TIME).clamp(0.0, 1.0);
+
+                spring.force_constant = LinearSpring::default().force_constant * progress;
+                *mass = progress.max(0.1);
+            }
+        }
 
         if self.shape.len() > 1 {
             // Angular Springs
@@ -548,26 +573,46 @@ impl SoftBody {
 
     /// CREDIT: tirithen <https://github.com/not-fl3/macroquad/issues/174#issuecomment-817203498>
     /// (made to work with convex polygons via earcut)
-    pub fn update_triangulation(&mut self) {
+    pub fn update_triangulation_indecies(&mut self) {
         static EARCUT: LazyLock<Mutex<Earcut<f32>>> = LazyLock::new(|| Mutex::new(Earcut::new()));
 
-        self.vertices.clear();
-        self.indices.clear();
-
-        self.vertices.reserve(self.shape.len() + 2);
-        self.indices.reserve(self.shape.len() * 3);
-
-        for (Point { position, .. }, _) in self.shape.iter() {
-            let vertex = Vertex::new(position.x, position.y, 0.0, 0.0, 0.0, colors::WHITE);
-
-            self.vertices.push(vertex);
-        }
-
+        self.triangle_indices.clear();
         EARCUT.lock().unwrap().earcut(
             self.shape.iter().map(|(point, _)| point.position.into()),
             &[],
-            &mut self.indices,
+            &mut self.triangle_indices,
         );
+    }
+
+    pub fn decompose_into_triangles(self) -> Vec<SoftBody> {
+        self.triangle_indices
+            .chunks_exact(3)
+            .map(|chunk| {
+                let mut shape = chunk
+                    .into_iter()
+                    .map(|&index| self.shape[index as usize])
+                    .collect::<Vec<_>>();
+
+                let length = shape.len();
+                for i in 0..shape.len() {
+                    let [(point_a, line), (point_b, _)] = shape
+                        .get_disjoint_mut([i, if i < length - 1 { i + 1 } else { 0 }])
+                        .unwrap();
+
+                    line.spring = LinearSpring {
+                        target_distance: point_a.position.distance(point_b.position),
+                        ..Default::default()
+                    };
+
+                    point_a.mass = 1.0;
+                }
+
+                let mut soft_body = Self::new(shape, Vec::new(), 0.0);
+                soft_body.debris_age = Some(0.0);
+                soft_body
+            })
+            .filter(|shape| shape.area() > 0.001)
+            .collect()
     }
 }
 
