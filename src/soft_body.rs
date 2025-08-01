@@ -9,9 +9,11 @@ use macroquad::{
     ui::Vertex,
 };
 
-use crate::utils;
+use crate::{simulation::ConstraintKey, utils};
 
 /// Points should always be oriented counter clockwise
+///
+/// TODO: Make objects that self intersect dissapear
 #[non_exhaustive]
 #[derive(Clone, Debug)]
 pub struct SoftBody {
@@ -534,6 +536,7 @@ pub struct Point {
     pub impulse: Vec2,
     pub mass: f32,
     pub spring: Option<AngularSpring>,
+    pub constraint: Option<ConstraintKey>,
 }
 
 impl Point {
@@ -559,6 +562,7 @@ impl Default for Point {
             impulse: Vec2::ZERO,
             mass: 1.0,
             spring: Some(AngularSpring::default()),
+            constraint: None,
         }
     }
 }

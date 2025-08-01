@@ -1,3 +1,4 @@
+pub mod constraint;
 pub mod simulation;
 pub mod soft_body;
 pub mod utils;
@@ -14,6 +15,7 @@ use macroquad::{
 };
 
 use crate::{
+    constraint::{Constraint, PointHandle},
     simulation::Simulation,
     soft_body::{AngularSpring, LinearSpring, SoftBodyBuilder},
 };
@@ -122,7 +124,7 @@ fn assemble_simulation() -> Simulation {
     simulation.soft_bodies.insert(
         SoftBodyBuilder::default()
             .gas_force(30.0)
-            .offset(0.0, -1.5)
+            .offset(-3.0, -1.5)
             .spring_scale(2.0)
             .subdivisions(2)
             .point(0.5, 0.5)
@@ -207,8 +209,8 @@ fn assemble_simulation() -> Simulation {
         SoftBodyBuilder::default()
             .gas_force(50.0)
             .mass(10.0)
-            .velocity(2.0, -3.0)
-            .offset(-6.0, 7.75)
+            .velocity(3.0, -3.0)
+            .offset(-12.0, 7.75)
             .point(0.0, 0.0)
             .with_internal_spring_start(0)
             .with_spring(LinearSpring {
@@ -255,6 +257,8 @@ fn assemble_simulation() -> Simulation {
             .build(),
     );
 
+    let mut keys = Vec::new();
+
     for x in 3..19 {
         for y in -21..-5 {
             let mut builder = SoftBodyBuilder::default()
@@ -282,9 +286,50 @@ fn assemble_simulation() -> Simulation {
                 builder = builder.point(angle.cos(), angle.sin())
             }
 
-            simulation.soft_bodies.insert(builder.build());
+            let key = simulation.soft_bodies.insert(builder.build());
+
+            keys.push(key);
         }
     }
+
+    simulation.insert_constraint(Constraint::HoldTogether {
+        points: vec![
+            PointHandle {
+                soft_body: keys[14],
+                index: 2,
+            },
+            PointHandle {
+                soft_body: keys[15],
+                index: 10,
+            },
+        ],
+    });
+
+    simulation.insert_constraint(Constraint::HoldTogether {
+        points: vec![
+            PointHandle {
+                soft_body: keys[14],
+                index: 3,
+            },
+            PointHandle {
+                soft_body: keys[15],
+                index: 9,
+            },
+        ],
+    });
+
+    simulation.insert_constraint(Constraint::HoldTogether {
+        points: vec![
+            PointHandle {
+                soft_body: keys[14],
+                index: 4,
+            },
+            PointHandle {
+                soft_body: keys[15],
+                index: 8,
+            },
+        ],
+    });
 
     simulation.update_keys();
 
