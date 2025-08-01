@@ -113,6 +113,7 @@ impl SoftBody {
                 let progress = (1.0 - *debris_age / Self::DEBRIS_DECAY_TIME).clamp(0.0, 1.0);
 
                 spring.force_constant = LinearSpring::default().force_constant * progress;
+                spring.damping = LinearSpring::default().damping * progress;
             }
         }
 
@@ -585,6 +586,10 @@ impl SoftBody {
     }
 
     pub fn decompose_into_triangles(self) -> Vec<SoftBody> {
+        if self.debris_age.is_some() {
+            return vec![self];
+        }
+
         self.triangle_indices
             .chunks_exact(3)
             .map(|chunk| {
