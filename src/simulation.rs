@@ -1,8 +1,10 @@
+use macroquad::camera::Camera2D;
 use slotmap::{HopSlotMap, new_key_type};
 
 use crate::{
     constraint::{Constraint, PointHandle},
     soft_body::{AttatchmentPointHandle, SoftBody},
+    utils,
 };
 
 pub struct Simulation {
@@ -45,7 +47,7 @@ impl Simulation {
         self.keys = self.soft_bodies.keys().collect();
     }
 
-    pub fn update(&mut self, dt: f32) {
+    pub fn tick_simulation(&mut self, dt: f32) {
         for (_, soft_body) in &mut self.soft_bodies {
             soft_body.apply_impulse_and_velocity(dt);
         }
@@ -106,10 +108,23 @@ impl Simulation {
         }
     }
 
+    pub fn update_input(&mut self, camera: &Camera2D) {
+        let mouse_position = utils::mouse_position(camera);
+    }
+
     pub fn destroy_soft_body(&mut self, key: SoftBodyKey, key_index: Option<usize>) {
         let soft_body = self.soft_bodies.remove(key).unwrap();
         if let Some(i) = key_index {
             self.keys.swap_remove(i);
+        }
+
+        for attatchment_point in &soft_body.attatchment_points {
+            let Some(connection) = attatchment_point.connection else {
+                continue;
+            };
+
+            self.soft_bodies[connection.soft_body].attatchment_points[connection.index]
+                .connection = None;
         }
 
         for triangle in soft_body.decompose_into_triangles() {

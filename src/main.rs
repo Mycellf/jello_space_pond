@@ -61,11 +61,13 @@ async fn main() {
             running ^= true;
         }
 
+        simulation.update_input(&camera);
+
         if running {
             tick_time += macroquad::time::get_frame_time() * ticks_per_second;
 
             for _ in 0..maximum_ticks_per_frame.min(tick_time.floor() as usize) {
-                simulation.update(1.0 / ticks_per_second);
+                simulation.tick_simulation(1.0 / ticks_per_second);
 
                 tick_time -= 1.0;
             }
