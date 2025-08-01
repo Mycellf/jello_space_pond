@@ -605,6 +605,7 @@ impl SoftBody {
                     };
 
                     point_a.mass = 1.0;
+                    point_a.spring = None;
                 }
 
                 let mut soft_body = Self::new(shape, Vec::new(), 0.0);
