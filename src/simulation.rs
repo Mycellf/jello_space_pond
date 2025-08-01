@@ -80,7 +80,7 @@ impl Simulation {
             let soft_body = &mut self.soft_bodies[key];
 
             if let Some(debris_age) = soft_body.debris_age {
-                if debris_age >= SoftBody::DEBRIS_DECAY_TIME {
+                if debris_age >= SoftBody::DEBRIS_DECAY_TIME || soft_body.area() < 0.0 {
                     self.soft_bodies.remove(key);
                     self.keys.swap_remove(i);
 

@@ -216,7 +216,7 @@ fn assemble_simulation() -> Simulation {
             .gas_force(50.0)
             .mass(10.0)
             .velocity(5.0, -5.0)
-            .offset(-13.0, 7.75)
+            .offset(-12.4, 7.75)
             .point(0.0, 0.0)
             .with_internal_spring_start(0)
             .with_spring(LinearSpring {
