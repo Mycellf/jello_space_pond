@@ -31,7 +31,7 @@ pub struct SoftBody {
 }
 
 impl SoftBody {
-    pub const DEBRIS_DECAY_TIME: f32 = 2.0;
+    pub const DEBRIS_DECAY_TIME: f32 = 5.0;
     pub const DEBRIS_MASS: f32 = 0.1;
 
     pub fn new(
@@ -57,9 +57,9 @@ impl SoftBody {
     /// CREDIT: tirithen <https://github.com/not-fl3/macroquad/issues/174#issuecomment-817203498>
     pub fn fill_color(&self, color: Color) {
         let color = if let Some(debris_age) = self.debris_age {
-            let progress = (1.0 - debris_age / Self::DEBRIS_DECAY_TIME / 1.25).clamp(0.0, 1.0);
+            let progress = (1.0 - debris_age / Self::DEBRIS_DECAY_TIME).clamp(0.0, 1.0);
             Color {
-                a: color.a * progress.powi(2),
+                a: color.a * progress,
                 ..color
             }
         } else {
