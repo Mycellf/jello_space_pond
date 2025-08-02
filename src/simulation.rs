@@ -367,10 +367,7 @@ impl Simulation {
 
                 let spring = LinearSpring {
                     maximum_force: PULL_SPRING.maximum_force
-                        / point_a
-                            .position
-                            .distance_squared(point_b.position)
-                            .max(0.25),
+                        / point_a.position.distance(point_b.position).max(0.25),
                     ..PULL_SPRING
                 };
 
@@ -428,7 +425,7 @@ impl Simulation {
         let spring = LinearSpring {
             maximum_force: GRAB_SPRING.maximum_force
                 / (self.input_state.mouse.position)
-                    .distance_squared(composite_point.position)
+                    .distance(composite_point.position)
                     .max(1.0),
             ..GRAB_SPRING
         };
