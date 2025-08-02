@@ -46,18 +46,8 @@ pub fn mouse_position(camera: &Camera2D) -> Vec2 {
     camera.screen_to_world(input::mouse_position().into())
 }
 
-/// CREDIT: Grumdrig: <https://stackoverflow.com/a/1501725>
-pub fn closest_point_on_line(start: Vec2, end: Vec2, point: Vec2) -> (Vec2, f32) {
-    let length_squared = (start - end).length_squared();
-
-    if length_squared == 0.0 {
-        (start, 0.0)
-    } else {
-        let line_progress = (point - start).dot(end - start) / length_squared;
-        let line_progress = line_progress.clamp(0.0, 1.0);
-
-        (start.lerp(end, line_progress), line_progress)
-    }
+pub fn interpolation_scale(interpolation: f32) -> f32 {
+    1.0 / (2.0 * interpolation.powi(2) - 2.0 * interpolation + 1.0)
 }
 
 pub fn draw_line(start: Vec2, end: Vec2, thickness: f32, color: Color) {
@@ -70,6 +60,20 @@ pub fn combine_friction(a: f32, b: f32) -> f32 {
 
 pub fn combine_friction_to_point(a: f32, b: f32) -> f32 {
     a.max(b)
+}
+
+/// CREDIT: Grumdrig: <https://stackoverflow.com/a/1501725>
+pub fn closest_point_on_line(start: Vec2, end: Vec2, point: Vec2) -> (Vec2, f32) {
+    let length_squared = (start - end).length_squared();
+
+    if length_squared == 0.0 {
+        (start, 0.0)
+    } else {
+        let line_progress = (point - start).dot(end - start) / length_squared;
+        let line_progress = line_progress.clamp(0.0, 1.0);
+
+        (start.lerp(end, line_progress), line_progress)
+    }
 }
 
 pub fn are_line_segments_intersecting([a1, b1]: [Vec2; 2], [a2, b2]: [Vec2; 2]) -> bool {

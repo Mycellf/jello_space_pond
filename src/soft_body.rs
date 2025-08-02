@@ -78,20 +78,22 @@ impl SoftBody {
 
     pub fn draw_attatchment_points(&self) {
         for i in 0..self.attatchment_points.len() {
-            self.draw_attatchment_point(i, false);
+            self.draw_attatchment_point(i, false, None);
         }
     }
 
-    pub fn draw_attatchment_point(&self, index: usize, selected: bool) {
+    pub fn draw_attatchment_point(&self, index: usize, selected: bool, force_color: Option<Color>) {
         let attatchment_point = self.attatchment_points[index];
 
         let mut i = attatchment_point.start_point;
 
-        let color = if attatchment_point.connection.is_some() {
-            Self::ATTATCHMENT_POINT_COLOR_USED
-        } else {
-            Self::ATTATCHMENT_POINT_COLOR
-        };
+        let color = force_color.unwrap_or_else(|| {
+            if attatchment_point.connection.is_some() {
+                Self::ATTATCHMENT_POINT_COLOR_USED
+            } else {
+                Self::ATTATCHMENT_POINT_COLOR
+            }
+        });
 
         let thickness = if selected {
             Self::ATTATCHMENT_POINT_THICKNESS_SELECTED
@@ -638,7 +640,7 @@ impl SoftBody {
         interpolation: f32,
     ) {
         // Will move the points just the right distance so the line intersects the new position
-        let interpolation_scale = 1.0 / (2.0 * interpolation.powi(2) - 2.0 * interpolation + 1.0);
+        let interpolation_scale = utils::interpolation_scale(interpolation);
 
         let composite_velocity = point_a.velocity.lerp(point_b.velocity, interpolation);
         let composite_mass =
@@ -844,7 +846,7 @@ pub struct AttatchmentPoint {
     pub connection: Option<AttatchmentPointHandle>,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AttatchmentPointHandle {
     pub soft_body: SoftBodyKey,
     pub index: usize,
@@ -858,6 +860,7 @@ pub struct LinearSpring {
     pub damping: f32,
     pub compression: bool,
     pub tension: bool,
+    pub maximum_force: f32,
 }
 
 impl LinearSpring {
@@ -896,8 +899,10 @@ impl LinearSpring {
         let relative_velocity = point_a.velocity - point_b.velocity;
         let normal_velocity = relative_velocity.dot(normalized_displacement);
 
-        let force = self.force_constant * (self.target_distance - distance);
-        let damping = -normal_velocity * self.damping;
+        let force = self.force_constant
+            * (self.target_distance - distance).clamp(-self.maximum_force, self.maximum_force);
+        let damping =
+            -normal_velocity * self.damping.clamp(-self.maximum_force, self.maximum_force);
 
         let mut total_force = force + damping;
 
@@ -917,6 +922,7 @@ impl Default for LinearSpring {
             damping: 10.0,
             compression: true,
             tension: true,
+            maximum_force: 100.0,
         }
     }
 }
@@ -928,6 +934,7 @@ pub struct AngularSpring {
     pub damping: f32,
     pub inwards: bool,
     pub outwards: bool,
+    pub maximum_force: f32,
 }
 
 impl AngularSpring {
@@ -984,16 +991,16 @@ impl AngularSpring {
 
         let relative_angular_velocity = angular_velocity_c + angular_velocity_a;
 
-        let force = self.force_constant * (self.target_angle - angle);
-        let damping = -relative_angular_velocity * self.damping;
+        let force = self.force_constant
+            * (self.target_angle - angle).clamp(-self.maximum_force, self.maximum_force);
+        let damping = -relative_angular_velocity
+            * self.damping.clamp(-self.maximum_force, self.maximum_force);
 
         let mut total_force = force + damping;
 
         if !self.inwards && total_force > 0.0 || !self.outwards && total_force < 0.0 {
             total_force = 0.0;
         }
-
-        total_force = total_force.clamp(-self.force_constant * 10.0, self.force_constant * 10.0);
 
         let point_a_force = point_a_normal * total_force * point_a_distance;
         let point_c_force = point_c_normal * total_force * point_c_distance;
@@ -1017,6 +1024,7 @@ impl Default for AngularSpring {
             damping: 10.0,
             inwards: true,
             outwards: true,
+            maximum_force: 10.0,
         }
     }
 }
@@ -1050,7 +1058,7 @@ impl BoundingBox {
             && point.y < self.max_corner().y
     }
 
-    pub fn point_within_distance(&self, point: Vec2, distance: f32) -> bool {
+    pub fn is_point_within_distance(&self, point: Vec2, distance: f32) -> bool {
         point.x > self.min_corner.x - distance
             && point.y > self.min_corner.y - distance
             && point.x < self.max_corner().x + distance

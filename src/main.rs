@@ -61,7 +61,18 @@ async fn main() {
             running ^= true;
         }
 
-        simulation.update_input(&camera);
+        let mut input = vec2(0.0, 0.0);
+
+        input.x += input::is_key_down(KeyCode::D) as u8 as f32;
+        input.x -= input::is_key_down(KeyCode::A) as u8 as f32;
+        input.y += input::is_key_down(KeyCode::W) as u8 as f32;
+        input.y -= input::is_key_down(KeyCode::S) as u8 as f32;
+
+        camera.target += input * macroquad::time::get_frame_time() * 5.0;
+
+        utils::update_camera_aspect_ratio(&mut camera);
+
+        simulation.update_input(&camera, macroquad::time::get_frame_time());
 
         if running {
             tick_time += macroquad::time::get_frame_time() * ticks_per_second;
@@ -75,16 +86,6 @@ async fn main() {
             tick_time = tick_time.min(1.0);
         }
 
-        let mut input = vec2(0.0, 0.0);
-
-        input.x += input::is_key_down(KeyCode::D) as u8 as f32;
-        input.x -= input::is_key_down(KeyCode::A) as u8 as f32;
-        input.y += input::is_key_down(KeyCode::W) as u8 as f32;
-        input.y -= input::is_key_down(KeyCode::S) as u8 as f32;
-
-        camera.target += input * macroquad::time::get_frame_time() * 5.0;
-
-        utils::update_camera_aspect_ratio(&mut camera);
         camera::set_camera(&camera);
 
         simulation.draw(debug);
@@ -202,6 +203,7 @@ fn assemble_simulation() -> Simulation {
             .velocity(5.0, -5.0)
             .offset(-11.1, 7.75)
             .point(0.0, 0.0)
+            .with_attatchment_point(1)
             .with_internal_spring_start(0)
             .with_spring(LinearSpring {
                 force_constant: 100.0,
@@ -209,6 +211,7 @@ fn assemble_simulation() -> Simulation {
                 ..Default::default()
             })
             .point(1.0, 0.0)
+            .with_attatchment_point(1)
             .with_internal_spring_start(1)
             .with_spring(LinearSpring {
                 force_constant: 100.0,
@@ -216,6 +219,7 @@ fn assemble_simulation() -> Simulation {
                 ..Default::default()
             })
             .point(1.0, 1.0)
+            .with_attatchment_point(1)
             .with_internal_spring_end(
                 0,
                 LinearSpring {
@@ -231,6 +235,7 @@ fn assemble_simulation() -> Simulation {
                 ..Default::default()
             })
             .point(0.0, 1.0)
+            .with_attatchment_point(1)
             .with_internal_spring_end(
                 1,
                 LinearSpring {

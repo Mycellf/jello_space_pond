@@ -1,22 +1,39 @@
-use macroquad::camera::Camera2D;
+use macroquad::{
+    camera::Camera2D,
+    color::colors,
+    input::{self, MouseButton},
+};
 use slotmap::{HopSlotMap, new_key_type};
 
 use crate::{
     constraint::{Constraint, PointHandle},
-    soft_body::{AttatchmentPointHandle, SoftBody},
+    soft_body::{AttatchmentPointHandle, LinearSpring, Point, SoftBody},
     utils,
 };
 
+#[derive(Clone, Debug)]
 pub struct Simulation {
     pub soft_bodies: HopSlotMap<SoftBodyKey, SoftBody>,
     pub keys: Vec<SoftBodyKey>,
 
     pub constraints: HopSlotMap<ConstraintKey, Constraint>,
+
+    pub input_state: InputState,
 }
 
 new_key_type! {
     pub struct SoftBodyKey;
     pub struct ConstraintKey;
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct InputState {
+    pub selected_attatchment_point: Option<(AttatchmentPointHandle, f32)>,
+    pub target_attatchment_point: Option<AttatchmentPointHandle>,
+    pub grabbing: bool,
+    pub clicking: bool,
+
+    pub mouse: Point,
 }
 
 impl Simulation {
@@ -26,6 +43,8 @@ impl Simulation {
             keys: Vec::new(),
 
             constraints: HopSlotMap::default(),
+
+            input_state: InputState::default(),
         }
     }
 
@@ -34,11 +53,31 @@ impl Simulation {
             soft_body.draw();
         }
 
+        if debug {
+            for (_, soft_body) in &self.soft_bodies {
+                soft_body.draw_springs();
+            }
+        }
+
         for (_, soft_body) in &self.soft_bodies {
             soft_body.draw_attatchment_points();
+        }
 
-            if debug {
-                soft_body.draw_springs();
+        let color = if self.input_state.target_attatchment_point.is_some() {
+            Some(colors::BLUE)
+        } else {
+            None
+        };
+
+        if let Some((attatchment_point, _)) = self.input_state.selected_attatchment_point {
+            if let Some(soft_body) = self.soft_bodies.get(attatchment_point.soft_body) {
+                soft_body.draw_attatchment_point(attatchment_point.index, true, color);
+            }
+        }
+
+        if let Some(attatchment_point) = self.input_state.target_attatchment_point {
+            if let Some(soft_body) = self.soft_bodies.get(attatchment_point.soft_body) {
+                soft_body.draw_attatchment_point(attatchment_point.index, true, color);
             }
         }
     }
@@ -48,6 +87,8 @@ impl Simulation {
     }
 
     pub fn tick_simulation(&mut self, dt: f32) {
+        self.update_grabbing(dt);
+
         for (_, soft_body) in &mut self.soft_bodies {
             soft_body.apply_impulse_and_velocity(dt);
         }
@@ -106,10 +147,220 @@ impl Simulation {
 
             i += 1;
         }
+
+        self.input_state.clicking = false;
     }
 
-    pub fn update_input(&mut self, camera: &Camera2D) {
+    pub fn update_input(&mut self, camera: &Camera2D, dt: f32) {
+        const SELECTION_RANGE: f32 = 0.25;
+
         let mouse_position = utils::mouse_position(camera);
+
+        self.input_state.mouse.velocity = (mouse_position - self.input_state.mouse.position) * dt;
+        self.input_state.mouse.position = mouse_position;
+        self.input_state.mouse.mass = 10000.0;
+
+        self.input_state.grabbing = input::is_mouse_button_down(MouseButton::Left);
+        self.input_state.clicking |= input::is_mouse_button_pressed(MouseButton::Left);
+
+        let mut selected_attatchment_point = None;
+        let mut selected_distance_squared = f32::INFINITY;
+
+        let key_to_skip = (self.input_state.grabbing)
+            .then(|| {
+                self.input_state
+                    .selected_attatchment_point
+                    .map(|(AttatchmentPointHandle { soft_body, .. }, _)| soft_body)
+            })
+            .flatten();
+
+        let required_length = (self.input_state.grabbing)
+            .then(|| {
+                self.input_state.selected_attatchment_point.map(
+                    |(AttatchmentPointHandle { soft_body, index }, _)| {
+                        self.soft_bodies[soft_body].attatchment_points[index].length
+                    },
+                )
+            })
+            .flatten();
+
+        for (key, soft_body) in &self.soft_bodies {
+            if !soft_body
+                .bounding_box
+                .is_point_within_distance(mouse_position, 0.25)
+                || Some(key) == key_to_skip
+            {
+                continue;
+            }
+
+            for (index, attatchment_point) in soft_body.attatchment_points.iter().enumerate() {
+                if attatchment_point.connection.is_some() && self.input_state.grabbing {
+                    continue;
+                }
+
+                if let Some(required_length) = required_length {
+                    if required_length != attatchment_point.length {
+                        continue;
+                    }
+                }
+
+                let mut i = attatchment_point.start_point;
+                let mut point_index = 0;
+
+                if attatchment_point.length < 2 {
+                    let (Point { position, .. }, _) = soft_body.shape[i];
+
+                    let distance_squared = position.distance_squared(mouse_position);
+
+                    if distance_squared < SELECTION_RANGE.powi(2)
+                        && distance_squared < selected_distance_squared
+                    {
+                        selected_attatchment_point = Some((
+                            AttatchmentPointHandle {
+                                soft_body: key,
+                                index,
+                            },
+                            0.0,
+                        ));
+
+                        selected_distance_squared = distance_squared;
+                    }
+
+                    continue;
+                }
+
+                let (&Point { position: a, .. }, _, &Point { position: b, .. }) =
+                    soft_body.get_line(i).unwrap();
+                let (closest_point, mut line_progress_of_minimum) =
+                    utils::closest_point_on_line(a, b, mouse_position);
+
+                let mut minimum_distance_squared = closest_point.distance_squared(mouse_position);
+
+                i = soft_body.next_point(i);
+                point_index += 1;
+
+                for _ in 2..attatchment_point.length {
+                    let (&Point { position: a, .. }, _, &Point { position: b, .. }) =
+                        soft_body.get_line(i).unwrap();
+                    let (closest_point, line_progress) =
+                        utils::closest_point_on_line(a, b, mouse_position);
+
+                    let distance_squared = closest_point.distance_squared(mouse_position);
+
+                    if distance_squared < minimum_distance_squared {
+                        minimum_distance_squared = distance_squared;
+                        line_progress_of_minimum = line_progress + point_index as f32;
+                    }
+
+                    i = soft_body.next_point(i);
+                    point_index += 1;
+                }
+
+                if minimum_distance_squared < SELECTION_RANGE.powi(2)
+                    && minimum_distance_squared < selected_distance_squared
+                {
+                    selected_attatchment_point = Some((
+                        AttatchmentPointHandle {
+                            soft_body: key,
+                            index,
+                        },
+                        line_progress_of_minimum,
+                    ));
+
+                    selected_distance_squared = minimum_distance_squared;
+                }
+            }
+        }
+
+        if self.input_state.grabbing {
+            if self.input_state.selected_attatchment_point.is_some() {
+                self.input_state.target_attatchment_point =
+                    selected_attatchment_point.map(|(handle, _)| handle);
+            }
+        } else {
+            if let Some(target) = self.input_state.target_attatchment_point {
+                if let Some((selected, _)) = self.input_state.selected_attatchment_point {
+                    self.connect_attatchment_points([selected, target]).unwrap();
+                }
+
+                self.input_state.target_attatchment_point = None;
+            }
+
+            self.input_state.selected_attatchment_point = selected_attatchment_point;
+        }
+    }
+
+    pub fn update_grabbing(&mut self, dt: f32) {
+        if let Some((handle, progress)) = self.input_state.selected_attatchment_point {
+            if !self.soft_bodies.contains_key(handle.soft_body) {
+                self.input_state.selected_attatchment_point = None;
+            } else if self.input_state.grabbing {
+                const GRAB_LINEAR_SPRING: LinearSpring = LinearSpring {
+                    target_distance: 0.0,
+                    force_constant: 20.0,
+                    damping: 10.0,
+                    compression: true,
+                    tension: true,
+                    maximum_force: 1.0,
+                };
+
+                let line_offset = progress.floor() as usize;
+                let interpolation = progress.rem_euclid(1.0);
+
+                let soft_body = &mut self.soft_bodies[handle.soft_body];
+                let length = soft_body.shape.len();
+
+                let attatchment_point = &mut soft_body.attatchment_points[handle.index];
+
+                if self.input_state.clicking && attatchment_point.connection.is_some() {
+                    self.disconnect_attatchment_point(handle).unwrap();
+                    self.input_state.selected_attatchment_point = None;
+                    return;
+                }
+
+                let attatchment_point = soft_body.attatchment_points[handle.index];
+
+                let (point_a, _, point_b) = soft_body
+                    .get_line_mut((attatchment_point.start_point + line_offset) % length)
+                    .unwrap();
+
+                let interpolation_scale = utils::interpolation_scale(interpolation);
+
+                let mut composite_point = Point {
+                    position: point_a.position.lerp(point_b.position, interpolation),
+                    velocity: point_a.velocity.lerp(point_b.velocity, interpolation),
+                    mass: utils::lerp(point_a.mass, point_b.mass, interpolation)
+                        * interpolation_scale,
+                    ..Default::default()
+                };
+
+                let spring = LinearSpring {
+                    maximum_force: GRAB_LINEAR_SPRING.maximum_force
+                        / (self.input_state.mouse.position)
+                            .distance_squared(composite_point.position)
+                            .max(1.0),
+                    ..GRAB_LINEAR_SPRING
+                };
+
+                spring.apply_force(
+                    &mut self.input_state.mouse.clone(),
+                    &mut composite_point,
+                    dt,
+                );
+
+                let impulse = composite_point.impulse;
+
+                let mut i = attatchment_point.start_point;
+
+                for _ in 0..attatchment_point.length {
+                    let (point, _) = &mut soft_body.shape[i];
+
+                    point.impulse += impulse * point.mass;
+
+                    i = soft_body.next_point(i);
+                }
+            }
+        }
     }
 
     pub fn destroy_soft_body(&mut self, key: SoftBodyKey, key_index: Option<usize>) {
@@ -241,6 +492,51 @@ impl Simulation {
                 point_b -= 1;
             } else {
                 point_b = length_b - 1;
+            }
+        }
+
+        Some(())
+    }
+
+    #[must_use]
+    pub fn disconnect_attatchment_point(&mut self, handle: AttatchmentPointHandle) -> Option<()> {
+        let connection = &self
+            .soft_bodies
+            .get(handle.soft_body)?
+            .attatchment_points
+            .get(handle.index)?
+            .connection?;
+
+        let other_connection = &mut self
+            .soft_bodies
+            .get_mut(connection.soft_body)?
+            .attatchment_points
+            .get_mut(connection.index)?
+            .connection;
+
+        if other_connection.is_none() {
+            return None;
+        }
+        *other_connection = None;
+
+        let soft_body = self.soft_bodies.get_mut(handle.soft_body)?;
+        let length = soft_body.shape.len();
+        let attatchment_point = soft_body.attatchment_points.get_mut(handle.index)?;
+
+        if attatchment_point.connection.is_none() {
+            return None;
+        }
+        attatchment_point.connection = None;
+
+        let mut i = attatchment_point.start_point;
+
+        for _ in 0..attatchment_point.length {
+            soft_body.shape[i].0.constraint = None;
+
+            if i < length - 1 {
+                i += 1;
+            } else {
+                i = 0;
             }
         }
 

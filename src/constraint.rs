@@ -26,6 +26,11 @@ impl Constraint {
                         continue;
                     };
 
+                    if point.constraint.is_none() {
+                        points.remove(i);
+                        continue;
+                    }
+
                     total_mass += point.mass;
                     total_momentum += point.velocity * point.mass;
                     total_mass_moment += point.position * point.mass;
@@ -105,7 +110,7 @@ impl Constraint {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PointHandle {
     pub soft_body: SoftBodyKey,
     pub index: usize,
