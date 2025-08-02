@@ -41,6 +41,16 @@ impl SoftBody {
     pub const DEBRIS_DECAY_TIME: f32 = 5.0;
     pub const DEBRIS_MASS: f32 = 0.1;
 
+    pub const DEBRIS_SPRING: LinearSpring = LinearSpring {
+        target_distance: 1.0,
+        force_constant: 25.0,
+        damping: 10.0,
+        compression: true,
+        tension: true,
+        maximum_force: 100.0,
+        maximum_damping: 100.0,
+    };
+
     pub const FILL_COLOR: Color = colors::LIGHTGRAY;
 
     pub const ATTATCHMENT_POINT_PADDING: f32 = 0.25;
@@ -207,8 +217,8 @@ impl SoftBody {
             for (_, Line { spring, .. }) in &mut self.shape {
                 let progress = (1.0 - *debris_age / Self::DEBRIS_DECAY_TIME).clamp(0.0, 1.0);
 
-                spring.force_constant = LinearSpring::default().force_constant * progress;
-                spring.damping = LinearSpring::default().damping * progress;
+                spring.force_constant = Self::DEBRIS_SPRING.force_constant * progress;
+                spring.damping = Self::DEBRIS_SPRING.damping * progress;
             }
         }
 
@@ -772,7 +782,7 @@ impl SoftBody {
 
                     line.spring = LinearSpring {
                         target_distance: point_a.position.distance(point_b.position),
-                        ..Default::default()
+                        ..Self::DEBRIS_SPRING
                     };
 
                     point_a.mass = Self::DEBRIS_MASS;
