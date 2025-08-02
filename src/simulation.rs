@@ -313,7 +313,7 @@ impl Simulation {
             damping: 20.0,
             compression: true,
             tension: true,
-            maximum_force: 1.0,
+            maximum_force: 0.5,
         };
 
         let [soft_body_a, soft_body_b] = self
@@ -338,7 +338,7 @@ impl Simulation {
 
                 let spring = LinearSpring {
                     maximum_force: PULL_SPRING.maximum_force
-                        / point_a.position.distance_squared(point_b.position).max(1.0),
+                        / point_a.position.distance_squared(point_b.position).max(0.5),
                     ..PULL_SPRING
                 };
 
@@ -369,7 +369,7 @@ impl Simulation {
             damping: 20.0,
             compression: true,
             tension: true,
-            maximum_force: 1.0,
+            maximum_force: 0.5,
         };
 
         let line_offset = progress.floor() as usize;
