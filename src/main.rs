@@ -152,68 +152,45 @@ fn assemble_simulation() -> Simulation {
         ..Default::default()
     };
 
-    simulation.soft_bodies.insert({
-        let mut soft_body = SoftBodyBuilder::default()
-            .offset(7.0, -10.0)
-            .subdivisions(2)
-            .point(0.0, 0.0)
-            .with_attatchment_point(4)
-            .with_internal_spring_start(0)
-            .point(1.0, 0.0)
-            .with_attatchment_point(4)
-            .with_internal_spring_start(1)
-            .point(1.0, 1.0)
-            .with_attatchment_point(4)
-            .with_internal_spring_end(0, diagonal_spring)
-            .point(0.0, 1.0)
-            .with_attatchment_point(4)
-            .with_internal_spring_end(1, diagonal_spring)
-            .build();
-
-        soft_body.shape[1].0.position.x -= 0.2;
-        soft_body.shape[2].0.position.x -= 0.4;
-        soft_body.shape[3].0.position.x -= 0.6;
-
-        soft_body
-    });
-
-    simulation.soft_bodies.insert(
-        SoftBodyBuilder::default()
-            .offset(0.0, -5.0)
-            .subdivisions(2)
-            .point(0.0, 0.0)
-            .with_attatchment_point(4)
-            .with_internal_spring_start(0)
-            .point(1.0, 0.0)
-            .with_attatchment_point(4)
-            .with_internal_spring_start(1)
-            .point(1.0, 1.0)
-            .with_attatchment_point(4)
-            .with_internal_spring_end(0, diagonal_spring)
-            .point(0.0, 1.0)
-            .with_attatchment_point(4)
-            .with_internal_spring_end(1, diagonal_spring)
-            .build(),
-    );
+    let corner_spring = LinearSpring {
+        target_distance: SQRT_2 / 3.0,
+        tension: false,
+        ..Default::default()
+    };
 
     for x in 0..12 {
         for y in 2..12 {
             simulation.soft_bodies.insert(
                 SoftBodyBuilder::default()
                     .offset(x as f32 * 4.0, y as f32 * 2.0)
-                    .subdivisions(2)
                     .point(0.0, 0.0)
                     .with_attatchment_point(4)
                     .with_internal_spring_start(0)
+                    .point(1.0 / 3.0, 0.0)
+                    .with_internal_spring_start(2)
+                    .point(2.0 / 3.0, 0.0)
+                    .with_internal_spring_start(3)
                     .point(1.0, 0.0)
                     .with_attatchment_point(4)
                     .with_internal_spring_start(1)
+                    .point(1.0, 1.0 / 3.0)
+                    .with_internal_spring_end(3, corner_spring)
+                    .point(1.0, 2.0 / 3.0)
+                    .with_internal_spring_start(4)
                     .point(1.0, 1.0)
                     .with_attatchment_point(4)
                     .with_internal_spring_end(0, diagonal_spring)
+                    .point(2.0 / 3.0, 1.0)
+                    .with_internal_spring_end(4, corner_spring)
+                    .point(1.0 / 3.0, 1.0)
+                    .with_internal_spring_start(5)
                     .point(0.0, 1.0)
                     .with_attatchment_point(4)
                     .with_internal_spring_end(1, diagonal_spring)
+                    .point(0.0, 2.0 / 3.0)
+                    .with_internal_spring_end(5, corner_spring)
+                    .point(0.0, 1.0 / 3.0)
+                    .with_internal_spring_end(2, corner_spring)
                     .build(),
             );
         }
