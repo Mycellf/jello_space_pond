@@ -63,14 +63,14 @@ async fn main() {
             running ^= true;
         }
 
-        let mut input = vec2(0.0, 0.0);
-
-        input.x += input::is_key_down(KeyCode::D) as u8 as f32;
-        input.x -= input::is_key_down(KeyCode::A) as u8 as f32;
-        input.y += input::is_key_down(KeyCode::W) as u8 as f32;
-        input.y -= input::is_key_down(KeyCode::S) as u8 as f32;
-
-        camera.target += input * macroquad::time::get_frame_time() * 5.0;
+        // let mut input = vec2(0.0, 0.0);
+        //
+        // input.x += input::is_key_down(KeyCode::D) as u8 as f32;
+        // input.x -= input::is_key_down(KeyCode::A) as u8 as f32;
+        // input.y += input::is_key_down(KeyCode::W) as u8 as f32;
+        // input.y -= input::is_key_down(KeyCode::S) as u8 as f32;
+        //
+        // camera.target += input * macroquad::time::get_frame_time() * 5.0;
 
         utils::update_camera_aspect_ratio(&mut camera);
 
@@ -80,7 +80,11 @@ async fn main() {
             tick_time += macroquad::time::get_frame_time() * ticks_per_second;
 
             for _ in 0..maximum_ticks_per_frame.min(tick_time.floor() as usize) {
-                simulation.tick_simulation(1.0 / ticks_per_second);
+                let new_camera_position = simulation.tick_simulation(1.0 / ticks_per_second);
+
+                if let Some(new_camera_position) = new_camera_position {
+                    camera.target = new_camera_position;
+                }
 
                 tick_time -= 1.0;
             }
@@ -98,6 +102,33 @@ async fn main() {
 
 fn assemble_simulation() -> Simulation {
     let mut simulation = Simulation::new();
+
+    let mut builder = SoftBodyBuilder::default()
+        .gas_force(10.0)
+        .friction(1.0)
+        .mass(0.5)
+        .base_angular_spring(Some(AngularSpring {
+            force_constant: 50.0,
+            damping: 5.0,
+            ..Default::default()
+        }))
+        .spring_scale(0.75)
+        .with_actor(Actor::HabitatBubble {
+            minimum_pressure: 0.5,
+        })
+        .offset(-5.0, 0.0);
+
+    for i in 0..12 {
+        let angle = (i as f32 + 0.5) / 12.0 * TAU;
+
+        builder = builder.point(angle.cos(), angle.sin());
+
+        if i % 3 == 1 {
+            builder = builder.with_attatchment_point(4);
+        }
+    }
+
+    simulation.soft_bodies.insert(builder.build());
 
     let diagonal_spring = LinearSpring {
         target_distance: SQRT_2,

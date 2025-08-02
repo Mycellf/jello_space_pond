@@ -204,6 +204,7 @@ impl SoftBody {
                         },
                     );
                 }
+                Actor::HabitatBubble { .. } => (),
             }
         }
     }
@@ -212,6 +213,20 @@ impl SoftBody {
         for actor in &self.actors {
             match actor {
                 Actor::RocketMotor { .. } => {}
+                Actor::HabitatBubble { minimum_pressure } => {
+                    let center = self.center_of_mass();
+
+                    shapes::draw_circle(
+                        center.x,
+                        center.y,
+                        0.4,
+                        if self.pressure > *minimum_pressure {
+                            colors::WHITE
+                        } else {
+                            colors::DARKGRAY
+                        },
+                    );
+                }
             }
         }
     }
@@ -242,10 +257,10 @@ impl SoftBody {
     }
 
     #[must_use]
-    pub fn apply_impulse_and_velocity(&mut self, dt: f32) -> bool {
+    pub fn apply_impulse_and_velocity(&mut self, dt: f32) -> (Option<Vec2>, bool) {
         let mut maximum_reached = false;
+        let new_camera_position = self.update_actors(dt);
 
-        self.update_actors(dt);
         self.add_pressure_impulse(dt);
 
         if let Some(debris_age) = &mut self.debris_age {
@@ -292,7 +307,7 @@ impl SoftBody {
 
         self.update_bounding_box();
 
-        maximum_reached
+        (new_camera_position, maximum_reached)
     }
 
     pub fn add_pressure_impulse(&mut self, dt: f32) {
@@ -319,8 +334,10 @@ impl SoftBody {
         }
     }
 
-    pub fn update_actors(&mut self, dt: f32) {
-        for actor in &mut self.actors {
+    pub fn update_actors(&mut self, dt: f32) -> Option<Vec2> {
+        let mut new_camera_position = None;
+
+        for actor in &self.actors {
             match actor {
                 Actor::RocketMotor {
                     line,
@@ -344,8 +361,15 @@ impl SoftBody {
                         point_b.impulse += impulse / 2.0;
                     }
                 }
+                Actor::HabitatBubble { minimum_pressure } => {
+                    if self.pressure > *minimum_pressure {
+                        new_camera_position = Some(self.center_of_mass())
+                    };
+                }
             }
         }
+
+        new_camera_position
     }
 
     pub fn update_bounding_box(&mut self) {
@@ -868,6 +892,16 @@ impl SoftBody {
     pub fn is_debris(&self) -> bool {
         self.debris_age.is_some()
     }
+
+    pub fn center_of_mass(&self) -> Vec2 {
+        let mut mass_moment = Vec2::ZERO;
+        let mut total_mass = 0.0;
+        for (point, _) in &self.shape {
+            mass_moment += point.position * point.mass;
+            total_mass += point.mass;
+        }
+        mass_moment / total_mass
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -944,6 +978,9 @@ pub enum Actor {
         line: usize,
         force: Vec2,
         enable: Keybind,
+    },
+    HabitatBubble {
+        minimum_pressure: f32,
     },
 }
 
@@ -1468,6 +1505,7 @@ impl SoftBodyBuilder {
             Actor::RocketMotor { line, .. } => {
                 *line = self.soft_body.shape.len() - 1;
             }
+            Actor::HabitatBubble { .. } => (),
         }
         self.soft_body.actors.push(actor);
         self

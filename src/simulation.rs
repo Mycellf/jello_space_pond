@@ -2,6 +2,7 @@ use macroquad::{
     camera::Camera2D,
     color::colors,
     input::{self, MouseButton},
+    math::Vec2,
 };
 use slotmap::{HopSlotMap, new_key_type};
 
@@ -102,7 +103,9 @@ impl Simulation {
         self.keys = self.soft_bodies.keys().collect();
     }
 
-    pub fn tick_simulation(&mut self, dt: f32) {
+    pub fn tick_simulation(&mut self, dt: f32) -> Option<Vec2> {
+        let mut new_camera_position = None;
+
         self.update_grabbing(dt);
 
         let mut unstable_soft_bodies = Vec::new();
@@ -110,7 +113,11 @@ impl Simulation {
         for (i, &key) in self.keys.iter().enumerate() {
             let soft_body = &mut self.soft_bodies[key];
 
-            let unstable = soft_body.apply_impulse_and_velocity(dt);
+            let (camera, unstable) = soft_body.apply_impulse_and_velocity(dt);
+
+            if new_camera_position.is_none() {
+                new_camera_position = camera;
+            }
 
             if unstable && !soft_body.is_debris() {
                 unstable_soft_bodies.push((i, key));
@@ -177,6 +184,8 @@ impl Simulation {
         }
 
         self.input_state.clicking = false;
+
+        new_camera_position
     }
 
     pub fn update_input(&mut self, camera: &Camera2D, dt: f32) {
