@@ -196,11 +196,11 @@ fn assemble_simulation() -> Simulation {
             .build(),
     );
 
-    for x in 2..12 {
+    for x in 0..12 {
         for y in 2..12 {
             simulation.soft_bodies.insert(
                 SoftBodyBuilder::default()
-                    .offset(x as f32 * 2.0, y as f32 * 2.0)
+                    .offset(x as f32 * 4.0, y as f32 * 2.0)
                     .subdivisions(2)
                     .point(0.0, 0.0)
                     .with_attatchment_point(4)
@@ -276,8 +276,8 @@ fn assemble_simulation() -> Simulation {
 
     let mut keys = Vec::new();
 
-    for x in 3..19 {
-        for y in -21..-5 {
+    for x in 0..12 {
+        for y in 2..12 {
             let mut builder = SoftBodyBuilder::default()
                 .gas_force(5.0)
                 .friction(1.0)
@@ -295,7 +295,7 @@ fn assemble_simulation() -> Simulation {
                     }
                 })
                 .spring_scale(0.5)
-                .offset(x as f32 * 2.0, y as f32 * 2.0);
+                .offset(x as f32 * 4.0 + 2.0, y as f32 * 2.0);
 
             for i in 0..12 {
                 let angle = (i as f32 + 0.5) / 12.0 * TAU;
