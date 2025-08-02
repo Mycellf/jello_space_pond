@@ -30,6 +30,8 @@ new_key_type! {
 pub struct InputState {
     pub selected_attatchment_point: Option<(AttatchmentPointHandle, f32)>,
     pub target_attatchment_point: Option<AttatchmentPointHandle>,
+    pub can_connect: bool,
+
     pub grabbing: bool,
     pub clicking: bool,
 
@@ -63,7 +65,9 @@ impl Simulation {
             soft_body.draw_attatchment_points();
         }
 
-        let color = if self.input_state.target_attatchment_point.is_some() {
+        let color = if self.input_state.target_attatchment_point.is_some()
+            && self.input_state.can_connect
+        {
             Some(colors::BLUE)
         } else {
             None
@@ -274,6 +278,15 @@ impl Simulation {
             }
         }
 
+        self.input_state.can_connect = false;
+        if let Some(target) = self.input_state.target_attatchment_point {
+            if let Some((selected, _)) = self.input_state.selected_attatchment_point {
+                self.input_state.can_connect = self
+                    .are_attatchment_points_within_range([selected, target], 1.0)
+                    .unwrap();
+            }
+        }
+
         if self.input_state.grabbing {
             if self.input_state.selected_attatchment_point.is_some() {
                 self.input_state.target_attatchment_point =
@@ -282,8 +295,12 @@ impl Simulation {
         } else {
             if let Some(target) = self.input_state.target_attatchment_point {
                 if let Some((selected, _)) = self.input_state.selected_attatchment_point {
-                    self.connect_attatchment_points([selected, target], 1.0)
-                        .unwrap();
+                    if self
+                        .are_attatchment_points_within_range([selected, target], 1.0)
+                        .unwrap()
+                    {
+                        self.connect_attatchment_points([selected, target]).unwrap();
+                    }
                 }
 
                 self.input_state.target_attatchment_point = None;
@@ -515,13 +532,63 @@ impl Simulation {
         }
     }
 
+    #[must_use]
+    pub fn are_attatchment_points_within_range(
+        &self,
+        [handle_a, handle_b]: [AttatchmentPointHandle; 2],
+        maximum_distance: f32,
+    ) -> Option<bool> {
+        let soft_body_a = self.soft_bodies.get(handle_a.soft_body)?;
+        let soft_body_b = self.soft_bodies.get(handle_b.soft_body)?;
+
+        let attatchment_point_a = soft_body_a.attatchment_points.get(handle_a.index)?;
+        let attatchment_point_b = soft_body_b.attatchment_points.get(handle_b.index)?;
+
+        if attatchment_point_a.length != attatchment_point_b.length
+            || attatchment_point_a.connection.is_some()
+            || attatchment_point_b.connection.is_some()
+        {
+            return None;
+        }
+
+        if maximum_distance.is_finite() {
+            let mut point_a = attatchment_point_a.start_point;
+            let mut point_b = (attatchment_point_b.start_point + attatchment_point_b.length - 1)
+                % soft_body_b.shape.len();
+
+            let maximum_distance_squared = maximum_distance.powi(2);
+
+            for _ in 0..attatchment_point_a.length {
+                if (soft_body_a.shape[point_a].0.position)
+                    .distance_squared(soft_body_b.shape[point_b].0.position)
+                    > maximum_distance_squared
+                {
+                    return Some(false);
+                }
+
+                if point_a < soft_body_a.shape.len() - 1 {
+                    point_a += 1;
+                } else {
+                    point_a = 0;
+                }
+
+                if point_b > 0 {
+                    point_b -= 1;
+                } else {
+                    point_b = soft_body_b.shape.len() - 1;
+                }
+            }
+        }
+
+        Some(true)
+    }
+
     /// Returns `None` if both handles point to the same soft body, if either is invalid, or if
     /// they don't have the same length.
     #[must_use]
     pub fn connect_attatchment_points(
         &mut self,
         [handle_a, handle_b]: [AttatchmentPointHandle; 2],
-        maximum_distance: f32,
     ) -> Option<()> {
         let [soft_body_a, soft_body_b] = self
             .soft_bodies
@@ -538,36 +605,6 @@ impl Simulation {
             || attatchment_point_b.connection.is_some()
         {
             return None;
-        }
-
-        // Check distance
-        if maximum_distance.is_finite() {
-            let mut point_a = attatchment_point_a.start_point;
-            let mut point_b =
-                (attatchment_point_b.start_point + attatchment_point_b.length - 1) % length_b;
-
-            let maximum_distance_squared = maximum_distance.powi(2);
-
-            for _ in 0..attatchment_point_a.length {
-                if (soft_body_a.shape[point_a].0.position)
-                    .distance_squared(soft_body_b.shape[point_b].0.position)
-                    > maximum_distance_squared
-                {
-                    return Some(());
-                }
-
-                if point_a < length_a - 1 {
-                    point_a += 1;
-                } else {
-                    point_a = 0;
-                }
-
-                if point_b > 0 {
-                    point_b -= 1;
-                } else {
-                    point_b = length_b - 1;
-                }
-            }
         }
 
         // Connect points

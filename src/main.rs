@@ -196,6 +196,29 @@ fn assemble_simulation() -> Simulation {
             .build(),
     );
 
+    for x in 2..12 {
+        for y in 2..12 {
+            simulation.soft_bodies.insert(
+                SoftBodyBuilder::default()
+                    .offset(x as f32 * 2.0, y as f32 * 2.0)
+                    .subdivisions(2)
+                    .point(0.0, 0.0)
+                    .with_attatchment_point(4)
+                    .with_internal_spring_start(0)
+                    .point(1.0, 0.0)
+                    .with_attatchment_point(4)
+                    .with_internal_spring_start(1)
+                    .point(1.0, 1.0)
+                    .with_attatchment_point(4)
+                    .with_internal_spring_end(0, diagonal_spring)
+                    .point(0.0, 1.0)
+                    .with_attatchment_point(4)
+                    .with_internal_spring_end(1, diagonal_spring)
+                    .build(),
+            );
+        }
+    }
+
     simulation.soft_bodies.insert(
         SoftBodyBuilder::default()
             .gas_force(50.0)
@@ -292,19 +315,16 @@ fn assemble_simulation() -> Simulation {
     }
 
     simulation
-        .connect_attatchment_points(
-            [
-                AttatchmentPointHandle {
-                    soft_body: keys[14],
-                    index: 0,
-                },
-                AttatchmentPointHandle {
-                    soft_body: keys[15],
-                    index: 2,
-                },
-            ],
-            f32::INFINITY,
-        )
+        .connect_attatchment_points([
+            AttatchmentPointHandle {
+                soft_body: keys[14],
+                index: 0,
+            },
+            AttatchmentPointHandle {
+                soft_body: keys[15],
+                index: 2,
+            },
+        ])
         .unwrap();
 
     simulation.update_keys();
