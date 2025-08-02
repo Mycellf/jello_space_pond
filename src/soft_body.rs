@@ -953,7 +953,7 @@ impl AngularSpring {
 
         let color = utils::color_lerp(WEAK_COLOR, STRONG_COLOR, total_force.clamp(0.0, 1.0));
 
-        shapes::draw_circle(point_b.position.x, point_b.position.y, 0.1, color);
+        shapes::draw_circle(point_b.position.x, point_b.position.y, 0.075, color);
     }
 
     pub fn apply_forces(
