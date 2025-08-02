@@ -281,7 +281,8 @@ impl Simulation {
         } else {
             if let Some(target) = self.input_state.target_attatchment_point {
                 if let Some((selected, _)) = self.input_state.selected_attatchment_point {
-                    self.connect_attatchment_points([selected, target]).unwrap();
+                    self.connect_attatchment_points([selected, target], 1.0)
+                        .unwrap();
                 }
 
                 self.input_state.target_attatchment_point = None;
@@ -296,71 +297,134 @@ impl Simulation {
             if !self.soft_bodies.contains_key(handle.soft_body) {
                 self.input_state.selected_attatchment_point = None;
             } else if self.input_state.grabbing {
-                const GRAB_LINEAR_SPRING: LinearSpring = LinearSpring {
-                    target_distance: 0.0,
-                    force_constant: 20.0,
-                    damping: 10.0,
-                    compression: true,
-                    tension: true,
-                    maximum_force: 1.0,
-                };
-
-                let line_offset = progress.floor() as usize;
-                let interpolation = progress.rem_euclid(1.0);
-
-                let soft_body = &mut self.soft_bodies[handle.soft_body];
-                let length = soft_body.shape.len();
-
-                let attatchment_point = &mut soft_body.attatchment_points[handle.index];
-
-                if self.input_state.clicking && attatchment_point.connection.is_some() {
-                    self.disconnect_attatchment_point(handle).unwrap();
-                    self.input_state.selected_attatchment_point = None;
-                    return;
-                }
-
-                let attatchment_point = soft_body.attatchment_points[handle.index];
-
-                let (point_a, _, point_b) = soft_body
-                    .get_line_mut((attatchment_point.start_point + line_offset) % length)
-                    .unwrap();
-
-                let interpolation_scale = utils::interpolation_scale(interpolation);
-
-                let mut composite_point = Point {
-                    position: point_a.position.lerp(point_b.position, interpolation),
-                    velocity: point_a.velocity.lerp(point_b.velocity, interpolation),
-                    mass: utils::lerp(point_a.mass, point_b.mass, interpolation)
-                        * interpolation_scale,
-                    ..Default::default()
-                };
-
-                let spring = LinearSpring {
-                    maximum_force: GRAB_LINEAR_SPRING.maximum_force
-                        / (self.input_state.mouse.position)
-                            .distance_squared(composite_point.position)
-                            .max(1.0),
-                    ..GRAB_LINEAR_SPRING
-                };
-
-                spring.apply_force(
-                    &mut self.input_state.mouse.clone(),
-                    &mut composite_point,
-                    dt,
-                );
-
-                let impulse = composite_point.impulse;
-
-                let mut i = attatchment_point.start_point;
-
-                for _ in 0..attatchment_point.length {
-                    let (point, _) = &mut soft_body.shape[i];
-
-                    point.impulse += impulse * point.mass;
-
-                    i = soft_body.next_point(i);
+                if let Some(target) = self.input_state.target_attatchment_point {
+                    self.push_together([handle, target], dt);
+                } else {
+                    self.push_towards_mouse(handle, progress, dt);
                 }
             }
+        }
+    }
+
+    pub fn push_together(&mut self, [handle_a, handle_b]: [AttatchmentPointHandle; 2], dt: f32) {
+        const PULL_SPRING: LinearSpring = LinearSpring {
+            target_distance: 0.0,
+            force_constant: 10.0,
+            damping: 20.0,
+            compression: true,
+            tension: true,
+            maximum_force: 1.0,
+        };
+
+        let [soft_body_a, soft_body_b] = self
+            .soft_bodies
+            .get_disjoint_mut([handle_a.soft_body, handle_b.soft_body])
+            .unwrap();
+
+        let length_a = soft_body_a.shape.len();
+        let length_b = soft_body_b.shape.len();
+
+        let attatchment_point_a = soft_body_a.attatchment_points[handle_a.index];
+        let attatchment_point_b = soft_body_b.attatchment_points[handle_b.index];
+
+        let mut point_a = attatchment_point_a.start_point;
+        let mut point_b =
+            (attatchment_point_b.start_point + attatchment_point_b.length - 1) % length_b;
+
+        for _ in 0..attatchment_point_a.length {
+            {
+                let (point_a, _) = &mut soft_body_a.shape[point_a];
+                let (point_b, _) = &mut soft_body_b.shape[point_b];
+
+                let spring = LinearSpring {
+                    maximum_force: PULL_SPRING.maximum_force
+                        / point_a.position.distance_squared(point_b.position).max(1.0),
+                    ..PULL_SPRING
+                };
+
+                let impulse = spring.get_force(point_a, point_b);
+
+                point_a.impulse += impulse / 2.0 * dt * point_a.mass;
+                point_b.impulse -= impulse / 2.0 * dt * point_b.mass;
+            }
+
+            if point_a < length_a - 1 {
+                point_a += 1;
+            } else {
+                point_a = 0;
+            }
+
+            if point_b > 0 {
+                point_b -= 1;
+            } else {
+                point_b = length_b - 1;
+            }
+        }
+    }
+
+    pub fn push_towards_mouse(&mut self, handle: AttatchmentPointHandle, progress: f32, dt: f32) {
+        const GRAB_SPRING: LinearSpring = LinearSpring {
+            target_distance: 0.0,
+            force_constant: 10.0,
+            damping: 20.0,
+            compression: true,
+            tension: true,
+            maximum_force: 1.0,
+        };
+
+        let line_offset = progress.floor() as usize;
+        let interpolation = progress.rem_euclid(1.0);
+
+        let soft_body = &mut self.soft_bodies[handle.soft_body];
+        let length = soft_body.shape.len();
+
+        let attatchment_point = &mut soft_body.attatchment_points[handle.index];
+
+        if self.input_state.clicking && attatchment_point.connection.is_some() {
+            self.disconnect_attatchment_point(handle).unwrap();
+            self.input_state.selected_attatchment_point = None;
+            return;
+        }
+
+        let attatchment_point = soft_body.attatchment_points[handle.index];
+
+        let (point_a, _, point_b) = soft_body
+            .get_line_mut((attatchment_point.start_point + line_offset) % length)
+            .unwrap();
+
+        let interpolation_scale = utils::interpolation_scale(interpolation);
+
+        let mut composite_point = Point {
+            position: point_a.position.lerp(point_b.position, interpolation),
+            velocity: point_a.velocity.lerp(point_b.velocity, interpolation),
+            mass: utils::lerp(point_a.mass, point_b.mass, interpolation) * interpolation_scale,
+            ..Default::default()
+        };
+
+        let spring = LinearSpring {
+            maximum_force: GRAB_SPRING.maximum_force
+                / (self.input_state.mouse.position)
+                    .distance_squared(composite_point.position)
+                    .max(1.0),
+            ..GRAB_SPRING
+        };
+
+        spring.apply_force(
+            &mut self.input_state.mouse.clone(),
+            &mut composite_point,
+            dt,
+        );
+
+        let impulse = composite_point.impulse;
+
+        let mut i = attatchment_point.start_point;
+
+        for _ in 0..attatchment_point.length {
+            let (point, _) = &mut soft_body.shape[i];
+
+            point.impulse += impulse * point.mass;
+
+            i = soft_body.next_point(i);
         }
     }
 
@@ -450,6 +514,7 @@ impl Simulation {
     pub fn connect_attatchment_points(
         &mut self,
         [handle_a, handle_b]: [AttatchmentPointHandle; 2],
+        maximum_distance: f32,
     ) -> Option<()> {
         let [soft_body_a, soft_body_b] = self
             .soft_bodies
@@ -468,6 +533,37 @@ impl Simulation {
             return None;
         }
 
+        // Check distance
+        if maximum_distance.is_finite() {
+            let mut point_a = attatchment_point_a.start_point;
+            let mut point_b =
+                (attatchment_point_b.start_point + attatchment_point_b.length - 1) % length_b;
+
+            let maximum_distance_squared = maximum_distance.powi(2);
+
+            for _ in 0..attatchment_point_a.length {
+                if (soft_body_a.shape[point_a].0.position)
+                    .distance_squared(soft_body_b.shape[point_b].0.position)
+                    > maximum_distance_squared
+                {
+                    return Some(());
+                }
+
+                if point_a < length_a - 1 {
+                    point_a += 1;
+                } else {
+                    point_a = 0;
+                }
+
+                if point_b > 0 {
+                    point_b -= 1;
+                } else {
+                    point_b = length_b - 1;
+                }
+            }
+        }
+
+        // Connect points
         attatchment_point_a.connection = Some(handle_b);
         attatchment_point_b.connection = Some(handle_a);
 
@@ -533,27 +629,6 @@ impl Simulation {
         if other_connection != Some(handle_a) {
             return None;
         }
-
-        // let soft_body = self.soft_bodies.get_mut(handle.soft_body)?;
-        // let length = soft_body.shape.len();
-        // let attatchment_point = soft_body.attatchment_points.get_mut(handle.index)?;
-        //
-        // if attatchment_point.connection.is_none() {
-        //     return None;
-        // }
-        // attatchment_point.connection = None;
-        //
-        // let mut i = attatchment_point.start_point;
-        //
-        // for _ in 0..attatchment_point.length {
-        //     soft_body.shape[i].0.constraint = None;
-        //
-        //     if i < length - 1 {
-        //         i += 1;
-        //     } else {
-        //         i = 0;
-        //     }
-        // }
 
         let [soft_body_a, soft_body_b] = self
             .soft_bodies

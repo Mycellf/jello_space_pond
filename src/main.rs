@@ -292,16 +292,19 @@ fn assemble_simulation() -> Simulation {
     }
 
     simulation
-        .connect_attatchment_points([
-            AttatchmentPointHandle {
-                soft_body: keys[14],
-                index: 0,
-            },
-            AttatchmentPointHandle {
-                soft_body: keys[15],
-                index: 2,
-            },
-        ])
+        .connect_attatchment_points(
+            [
+                AttatchmentPointHandle {
+                    soft_body: keys[14],
+                    index: 0,
+                },
+                AttatchmentPointHandle {
+                    soft_body: keys[15],
+                    index: 2,
+                },
+            ],
+            f32::INFINITY,
+        )
         .unwrap();
 
     simulation.update_keys();
