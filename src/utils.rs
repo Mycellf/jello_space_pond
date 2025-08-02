@@ -62,6 +62,30 @@ pub fn combine_friction_to_point(a: f32, b: f32) -> f32 {
     a.max(b)
 }
 
+pub fn generate_color_for_spring(force: f32, damping: f32) -> Color {
+    fn scale(force: f32) -> f32 {
+        (force / 2.0).clamp(0.0, 1.0)
+    }
+
+    let force = force.abs();
+    let damping = damping.abs();
+
+    Color {
+        r: scale(force),
+        g: 1.0 - scale(force.max(damping)),
+        b: scale(damping),
+        a: 1.0,
+    }
+}
+
+pub fn clamp_sign(value: f32, allow_positive: bool, allow_negative: bool) -> f32 {
+    if !allow_positive && value > 0.0 || !allow_negative && value < 0.0 {
+        0.0
+    } else {
+        value
+    }
+}
+
 /// CREDIT: Grumdrig: <https://stackoverflow.com/a/1501725>
 pub fn closest_point_on_line(start: Vec2, end: Vec2, point: Vec2) -> (Vec2, f32) {
     let length_squared = (start - end).length_squared();

@@ -154,7 +154,8 @@ fn assemble_simulation() -> Simulation {
 
     let corner_spring = LinearSpring {
         target_distance: SQRT_2 / 3.0,
-        tension: false,
+        force_constant: 0.0,
+        damping: 100.0,
         ..Default::default()
     };
 

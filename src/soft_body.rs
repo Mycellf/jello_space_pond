@@ -868,33 +868,26 @@ pub struct LinearSpring {
 
 impl LinearSpring {
     pub fn draw_line(&self, point_a: &Point, point_b: &Point) {
-        const WEAK_COLOR: Color = colors::GREEN;
-        const STRONG_COLOR: Color = colors::RED;
+        let (force, damping, _) = self.get_force(point_a, point_b);
 
-        let force = self.get_force(point_a, point_b);
-
-        let color = utils::color_lerp(
-            WEAK_COLOR,
-            STRONG_COLOR,
-            (force.length() / 2.0).clamp(0.0, 1.0),
-        );
+        let color = utils::generate_color_for_spring(force, damping);
 
         utils::draw_line(point_a.position, point_b.position, 0.05, color);
     }
 
     pub fn apply_force(&self, point_a: &mut Point, point_b: &mut Point, dt: f32) {
-        let impulse = self.get_force(point_a, point_b);
+        let (_, _, impulse) = self.get_force(point_a, point_b);
 
         point_a.impulse += impulse / 2.0 * dt;
         point_b.impulse -= impulse / 2.0 * dt;
     }
 
-    pub fn get_force(&self, point_a: &Point, point_b: &Point) -> Vec2 {
+    pub fn get_force(&self, point_a: &Point, point_b: &Point) -> (f32, f32, Vec2) {
         let displacement = point_a.position - point_b.position;
         let distance = displacement.length();
 
         if distance <= f32::EPSILON {
-            return Vec2::ZERO;
+            return (0.0, 0.0, Vec2::ZERO);
         }
 
         let normalized_displacement = displacement / distance;
@@ -902,20 +895,24 @@ impl LinearSpring {
         let relative_velocity = point_a.velocity - point_b.velocity;
         let normal_velocity = relative_velocity.dot(normalized_displacement);
 
-        let force = self.force_constant
-            * (self.target_distance - distance).clamp(-self.maximum_force, self.maximum_force);
-        let damping = -normal_velocity
-            * self
-                .damping
-                .clamp(-self.maximum_damping, self.maximum_damping);
+        let force = utils::clamp_sign(
+            self.force_constant
+                * (self.target_distance - distance).clamp(-self.maximum_force, self.maximum_force),
+            self.compression,
+            self.tension,
+        );
+        let damping = utils::clamp_sign(
+            -normal_velocity
+                * self
+                    .damping
+                    .clamp(-self.maximum_damping, self.maximum_damping),
+            self.compression,
+            self.tension,
+        );
 
-        let mut total_force = force + damping;
+        let total_force = force + damping;
 
-        if !self.compression && total_force > 0.0 || !self.tension && total_force < 0.0 {
-            total_force = 0.0;
-        }
-
-        normalized_displacement * total_force
+        (force, damping, normalized_displacement * total_force)
     }
 }
 
@@ -946,12 +943,9 @@ pub struct AngularSpring {
 
 impl AngularSpring {
     pub fn draw_circle(&self, point_a: &Point, point_b: &Point, point_c: &Point) {
-        const WEAK_COLOR: Color = colors::GREEN;
-        const STRONG_COLOR: Color = colors::RED;
+        let (force, damping, _) = self.get_forces(point_a, point_b, point_c);
 
-        let (total_force, _) = self.get_forces(point_a, point_b, point_c);
-
-        let color = utils::color_lerp(WEAK_COLOR, STRONG_COLOR, total_force.clamp(0.0, 1.0));
+        let color = utils::generate_color_for_spring(force, damping);
 
         shapes::draw_circle(point_b.position.x, point_b.position.y, 0.075, color);
     }
@@ -963,7 +957,7 @@ impl AngularSpring {
         point_c: &mut Point,
         dt: f32,
     ) {
-        let (_, [impulse_a, impulse_b, impulse_c]) = self.get_forces(point_a, point_b, point_c);
+        let (_, _, [impulse_a, impulse_b, impulse_c]) = self.get_forces(point_a, point_b, point_c);
 
         point_a.impulse += impulse_a * dt;
         point_b.impulse += impulse_b * dt;
@@ -975,7 +969,7 @@ impl AngularSpring {
         point_a: &Point,
         point_b: &Point,
         point_c: &Point,
-    ) -> (f32, [Vec2; 3]) {
+    ) -> (f32, f32, [Vec2; 3]) {
         let base_direction = point_b.position - point_a.position;
         let measure_direction = point_c.position - point_b.position;
 
@@ -983,7 +977,7 @@ impl AngularSpring {
         let point_c_distance = measure_direction.length();
 
         if point_a_distance == 0.0 || point_c_distance == 0.0 {
-            return (0.0, [Vec2::ZERO; 3]);
+            return (0.0, 0.0, [Vec2::ZERO; 3]);
         }
 
         let angle = base_direction.angle_between(measure_direction);
@@ -998,24 +992,29 @@ impl AngularSpring {
 
         let relative_angular_velocity = angular_velocity_c + angular_velocity_a;
 
-        let force = self.force_constant
-            * (self.target_angle - angle).clamp(-self.maximum_force, self.maximum_force);
-        let damping = -relative_angular_velocity
-            * self
-                .damping
-                .clamp(-self.maximum_damping, self.maximum_damping);
+        let force = utils::clamp_sign(
+            self.force_constant
+                * (self.target_angle - angle).clamp(-self.maximum_force, self.maximum_force),
+            self.inwards,
+            self.outwards,
+        );
+        let damping = utils::clamp_sign(
+            -relative_angular_velocity
+                * self
+                    .damping
+                    .clamp(-self.maximum_damping, self.maximum_damping),
+            self.inwards,
+            self.outwards,
+        );
 
-        let mut total_force = force + damping;
-
-        if !self.inwards && total_force > 0.0 || !self.outwards && total_force < 0.0 {
-            total_force = 0.0;
-        }
+        let total_force = force + damping;
 
         let point_a_force = point_a_normal * total_force * point_a_distance;
         let point_c_force = point_c_normal * total_force * point_c_distance;
 
         (
-            total_force,
+            force,
+            damping,
             [
                 point_a_force,
                 -(point_a_force + point_c_force),

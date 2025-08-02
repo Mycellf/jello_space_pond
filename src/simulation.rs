@@ -366,7 +366,7 @@ impl Simulation {
                 let (point_a, _) = &mut soft_body_a.shape[point_a];
                 let (point_b, _) = &mut soft_body_b.shape[point_b];
 
-                let impulse = Self::GRAB_SPRING.get_force(point_a, point_b);
+                let (_, _, impulse) = Self::GRAB_SPRING.get_force(point_a, point_b);
 
                 point_a.impulse += impulse / 2.0 * dt * point_a.mass;
             }
