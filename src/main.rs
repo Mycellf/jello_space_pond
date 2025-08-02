@@ -228,7 +228,7 @@ fn assemble_simulation() -> Simulation {
                 .base_spring({
                     LinearSpring {
                         force_constant: 25.0,
-                        maximum_force: 1.0,
+                        maximum_force: 1.5,
                         ..Default::default()
                     }
                 })
