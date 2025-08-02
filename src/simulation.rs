@@ -179,10 +179,11 @@ impl Simulation {
             .then(|| {
                 self.input_state.selected_attatchment_point.map(
                     |(AttatchmentPointHandle { soft_body, index }, _)| {
-                        self.soft_bodies[soft_body].attatchment_points[index].length
+                        Some(self.soft_bodies.get(soft_body)?.attatchment_points[index].length)
                     },
                 )
             })
+            .flatten()
             .flatten();
 
         for (key, soft_body) in &self.soft_bodies {
