@@ -55,12 +55,6 @@ impl Simulation {
             soft_body.draw();
         }
 
-        if debug {
-            for (_, soft_body) in &self.soft_bodies {
-                soft_body.draw_springs();
-            }
-        }
-
         for (_, soft_body) in &self.soft_bodies {
             soft_body.draw_attatchment_points();
         }
@@ -82,6 +76,12 @@ impl Simulation {
         if let Some(attatchment_point) = self.input_state.target_attatchment_point {
             if let Some(soft_body) = self.soft_bodies.get(attatchment_point.soft_body) {
                 soft_body.draw_attatchment_point(attatchment_point.index, true, color);
+            }
+        }
+
+        if debug {
+            for (_, soft_body) in &self.soft_bodies {
+                soft_body.draw_springs();
             }
         }
     }
