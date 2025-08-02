@@ -365,18 +365,24 @@ impl Simulation {
     }
 
     pub fn destroy_soft_body(&mut self, key: SoftBodyKey, key_index: Option<usize>) {
+        for (index, attatchment_point) in self.soft_bodies[key]
+            .attatchment_points
+            .clone()
+            .into_iter()
+            .enumerate()
+        {
+            if attatchment_point.connection.is_some() {
+                self.disconnect_attatchment_point(AttatchmentPointHandle {
+                    soft_body: key,
+                    index,
+                })
+                .unwrap();
+            }
+        }
+
         let soft_body = self.soft_bodies.remove(key).unwrap();
         if let Some(i) = key_index {
             self.keys.swap_remove(i);
-        }
-
-        for attatchment_point in &soft_body.attatchment_points {
-            let Some(connection) = attatchment_point.connection else {
-                continue;
-            };
-
-            self.soft_bodies[connection.soft_body].attatchment_points[connection.index]
-                .connection = None;
         }
 
         for triangle in soft_body.decompose_into_triangles() {
