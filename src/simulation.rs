@@ -297,6 +297,17 @@ impl Simulation {
             if !self.soft_bodies.contains_key(handle.soft_body) {
                 self.input_state.selected_attatchment_point = None;
             } else if self.input_state.grabbing {
+                if self.input_state.clicking
+                    && self.soft_bodies[handle.soft_body].attatchment_points[handle.index]
+                        .connection
+                        .is_some()
+                {
+                    self.disconnect_attatchment_point(handle).unwrap();
+                    self.input_state.selected_attatchment_point = None;
+                    self.input_state.target_attatchment_point = None;
+                    return;
+                }
+
                 if let Some(target) = self.input_state.target_attatchment_point {
                     self.push_together([handle, target], dt);
                 } else {
@@ -338,7 +349,10 @@ impl Simulation {
 
                 let spring = LinearSpring {
                     maximum_force: PULL_SPRING.maximum_force
-                        / point_a.position.distance_squared(point_b.position).max(0.5),
+                        / point_a
+                            .position
+                            .distance_squared(point_b.position)
+                            .max(0.25),
                     ..PULL_SPRING
                 };
 
@@ -377,15 +391,6 @@ impl Simulation {
 
         let soft_body = &mut self.soft_bodies[handle.soft_body];
         let length = soft_body.shape.len();
-
-        let attatchment_point = &mut soft_body.attatchment_points[handle.index];
-
-        if self.input_state.clicking && attatchment_point.connection.is_some() {
-            self.disconnect_attatchment_point(handle).unwrap();
-            self.input_state.selected_attatchment_point = None;
-            self.input_state.target_attatchment_point = None;
-            return;
-        }
 
         let attatchment_point = soft_body.attatchment_points[handle.index];
 
