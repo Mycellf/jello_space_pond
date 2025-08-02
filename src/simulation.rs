@@ -160,7 +160,7 @@ impl Simulation {
 
         let mouse_position = utils::mouse_position(camera);
 
-        self.input_state.mouse.velocity = (mouse_position - self.input_state.mouse.position) * dt;
+        self.input_state.mouse.velocity = (mouse_position - self.input_state.mouse.position) / dt;
         self.input_state.mouse.position = mouse_position;
         self.input_state.mouse.mass = 10000.0;
 
