@@ -42,7 +42,7 @@ async fn main() {
 
     let ticks_per_second = 120.0;
 
-    let minimum_fast_framerate: f32 = 15.0;
+    let minimum_fast_framerate: f32 = 30.0;
     let maximum_ticks_per_frame = (ticks_per_second / minimum_fast_framerate).ceil() as usize;
 
     let mut tick_time = 0.0;
@@ -102,60 +102,11 @@ fn assemble_simulation() -> Simulation {
         ..Default::default()
     };
 
-    let orthogonal_spring = LinearSpring::default();
-
-    simulation.soft_bodies.insert(
-        SoftBodyBuilder::default()
-            .gas_force(30.0)
-            .offset(-3.0, -1.5)
-            .spring_scale(2.0)
-            .subdivisions(2)
-            .point(0.5, 0.5)
-            .with_internal_spring_start(0)
-            .with_internal_spring_start(3)
-            .with_internal_spring_start(8)
-            .point(0.0, 0.5)
-            .with_internal_spring_start(1)
-            .point(0.0, 0.0)
-            .with_internal_spring_end(0, diagonal_spring)
-            .point(0.5, 0.0)
-            .with_internal_spring_end(1, diagonal_spring)
-            .with_internal_spring_end(8, orthogonal_spring)
-            .with_internal_spring_start(2)
-            .point(1.0, 0.0)
-            .with_internal_spring_end(3, diagonal_spring)
-            .with_internal_spring_start(4)
-            .with_internal_spring_start(9)
-            .point(1.5, 0.0)
-            .with_internal_spring_start(5)
-            .with_internal_spring_start(10)
-            .point(1.5, 0.5)
-            .with_internal_spring_end(4, diagonal_spring)
-            .with_internal_spring_start(7)
-            .with_internal_spring_start(11)
-            .point(1.5, 1.0)
-            .with_internal_spring_start(6)
-            .point(1.0, 1.0)
-            .with_internal_spring_end(7, diagonal_spring)
-            .point(1.0, 0.5)
-            .with_internal_spring_end(2, diagonal_spring)
-            .with_internal_spring_end(5, diagonal_spring)
-            .with_internal_spring_end(6, diagonal_spring)
-            .with_internal_spring_end(9, orthogonal_spring)
-            .with_internal_spring_end(10, diagonal_spring)
-            .with_internal_spring_end(11, orthogonal_spring)
-            .build(),
-    );
-
-    let diagonal_spring = LinearSpring {
-        target_distance: SQRT_2,
-        ..Default::default()
-    };
-
     let corner_spring = LinearSpring {
         target_distance: SQRT_2 / 3.0,
         force_constant: 0.0,
         damping: 100.0,
+        tension: false,
         ..Default::default()
     };
 
@@ -196,61 +147,6 @@ fn assemble_simulation() -> Simulation {
             );
         }
     }
-
-    simulation.soft_bodies.insert(
-        SoftBodyBuilder::default()
-            .gas_force(50.0)
-            .mass(10.0)
-            .offset(-11.1, 7.75)
-            .point(0.0, 0.0)
-            .with_attatchment_point(1)
-            .with_internal_spring_start(0)
-            .with_spring(LinearSpring {
-                force_constant: 100.0,
-                target_distance: 2.0,
-                ..Default::default()
-            })
-            .point(1.0, 0.0)
-            .with_attatchment_point(1)
-            .with_internal_spring_start(1)
-            .with_spring(LinearSpring {
-                force_constant: 100.0,
-                target_distance: 2.0,
-                ..Default::default()
-            })
-            .point(1.0, 1.0)
-            .with_attatchment_point(1)
-            .with_internal_spring_end(
-                0,
-                LinearSpring {
-                    target_distance: 1.0,
-                    force_constant: 200.0,
-                    damping: 20.0,
-                    ..Default::default()
-                },
-            )
-            .with_spring(LinearSpring {
-                force_constant: 100.0,
-                target_distance: 0.25,
-                ..Default::default()
-            })
-            .point(0.0, 1.0)
-            .with_attatchment_point(1)
-            .with_internal_spring_end(
-                1,
-                LinearSpring {
-                    target_distance: 4.0,
-                    force_constant: 200.0,
-                    ..Default::default()
-                },
-            )
-            .with_spring(LinearSpring {
-                force_constant: 100.0,
-                target_distance: 0.25,
-                ..Default::default()
-            })
-            .build(),
-    );
 
     let mut keys = Vec::new();
 

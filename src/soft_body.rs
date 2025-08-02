@@ -892,10 +892,10 @@ impl LinearSpring {
             return (0.0, 0.0, Vec2::ZERO);
         }
 
-        let normalized_displacement = displacement / distance;
+        let direction = displacement / distance;
 
         let relative_velocity = point_a.velocity - point_b.velocity;
-        let normal_velocity = relative_velocity.dot(normalized_displacement);
+        let normal_velocity = relative_velocity.dot(direction);
 
         let force = utils::clamp_sign(
             self.force_constant
@@ -904,17 +904,14 @@ impl LinearSpring {
             self.tension,
         );
         let damping = utils::clamp_sign(
-            -normal_velocity
-                * self
-                    .damping
-                    .clamp(-self.maximum_damping, self.maximum_damping),
+            -self.damping * normal_velocity.clamp(-self.maximum_damping, self.maximum_damping),
             self.compression,
             self.tension,
         );
 
         let total_force = force + damping;
 
-        (force, damping, normalized_displacement * total_force)
+        (force, damping, direction * total_force)
     }
 }
 
@@ -1001,10 +998,8 @@ impl AngularSpring {
             self.outwards,
         );
         let damping = utils::clamp_sign(
-            -relative_angular_velocity
-                * self
-                    .damping
-                    .clamp(-self.maximum_damping, self.maximum_damping),
+            -relative_angular_velocity.clamp(-self.maximum_damping, self.maximum_damping)
+                * self.damping,
             self.inwards,
             self.outwards,
         );
@@ -1030,7 +1025,7 @@ impl Default for AngularSpring {
     fn default() -> Self {
         Self {
             target_angle: 0.0,
-            force_constant: 10.0,
+            force_constant: 20.0,
             damping: 10.0,
             inwards: true,
             outwards: true,

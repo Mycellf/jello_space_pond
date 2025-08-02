@@ -408,10 +408,12 @@ impl Simulation {
         };
 
         let mut mouse = Point {
-            velocity: self.input_state.mouse.velocity
-                / (self.input_state.mouse.position)
+            velocity: composite_point.velocity.lerp(
+                self.input_state.mouse.velocity,
+                1.0 / (self.input_state.mouse.position)
                     .distance_squared(composite_point.position)
                     .max(1.0),
+            ),
             ..self.input_state.mouse
         };
 
