@@ -383,6 +383,7 @@ impl Simulation {
         if self.input_state.clicking && attatchment_point.connection.is_some() {
             self.disconnect_attatchment_point(handle).unwrap();
             self.input_state.selected_attatchment_point = None;
+            self.input_state.target_attatchment_point = None;
             return;
         }
 
