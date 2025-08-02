@@ -36,6 +36,8 @@ pub struct SoftBody {
 }
 
 impl SoftBody {
+    pub const DRAG: f32 = 0.2;
+
     pub const DEBRIS_DECAY_TIME: f32 = 5.0;
     pub const DEBRIS_MASS: f32 = 0.1;
 
@@ -236,6 +238,8 @@ impl SoftBody {
         }
 
         for (point, _) in &mut self.shape {
+            point.impulse -= point.velocity * Self::DRAG * dt;
+
             point.apply_impulse_and_velocity(dt);
         }
 
@@ -918,12 +922,12 @@ impl Default for LinearSpring {
     fn default() -> Self {
         Self {
             target_distance: 1.0,
-            force_constant: 50.0,
-            damping: 10.0,
+            force_constant: 250.0,
+            damping: 50.0,
             compression: true,
             tension: true,
-            maximum_force: 100.0,
-            maximum_damping: 100.0,
+            maximum_force: 500.0,
+            maximum_damping: 500.0,
         }
     }
 }
