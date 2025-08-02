@@ -14,7 +14,9 @@ use macroquad::{
 
 use crate::{
     simulation::Simulation,
-    soft_body::{AngularSpring, AttatchmentPointHandle, LinearSpring, SoftBodyBuilder},
+    soft_body::{
+        Actor, AngularSpring, AttatchmentPointHandle, Keybind, LinearSpring, SoftBodyBuilder,
+    },
 };
 
 const START_IN_FULLSCREEN: bool = true;
@@ -102,13 +104,74 @@ fn assemble_simulation() -> Simulation {
         ..Default::default()
     };
 
+    let slight_diagonal_spring = LinearSpring {
+        target_distance: vec2(1.0, 1.0 / 3.0).length(),
+        ..Default::default()
+    };
+
+    let orthogonal_spring = LinearSpring::default();
+
     let corner_spring = LinearSpring {
         target_distance: SQRT_2 / 3.0,
-        force_constant: 0.0,
         damping: 100.0,
         tension: false,
         ..Default::default()
     };
+
+    for i in 0..5 {
+        simulation.soft_bodies.insert(
+            SoftBodyBuilder::default()
+                .offset(i as f32 * 2.0, 0.0)
+                .point(0.0, 0.0)
+                .with_attatchment_point(4)
+                .with_internal_spring_start(0)
+                .point(1.0 / 3.0, 0.0)
+                .with_internal_spring_start(2)
+                .with_internal_spring_start(10)
+                .point(2.0 / 3.0, 0.0)
+                .with_internal_spring_start(3)
+                .with_internal_spring_start(11)
+                .point(1.0, 0.0)
+                .with_attatchment_point(4)
+                .with_internal_spring_start(1)
+                .with_internal_spring_start(8)
+                .point(1.0, 1.0 / 3.0)
+                .with_internal_spring_start(7)
+                .with_internal_spring_end(3, corner_spring)
+                .point(1.0, 2.0 / 3.0)
+                .with_internal_spring_start(4)
+                .with_internal_spring_start(6)
+                .point(1.0, 1.0)
+                .with_attatchment_point(4)
+                .with_internal_spring_start(9)
+                .with_internal_spring_end(0, diagonal_spring)
+                .point(2.0 / 3.0, 1.0)
+                .with_internal_spring_end(4, corner_spring)
+                .with_internal_spring_end(11, orthogonal_spring)
+                .point(1.0 / 3.0, 1.0)
+                .with_internal_spring_start(5)
+                .with_internal_spring_end(10, orthogonal_spring)
+                .point(0.0, 1.0)
+                .with_internal_spring_end(1, diagonal_spring)
+                .point(0.0, 2.0 / 3.0)
+                .with_actor(Actor::RocketMotor {
+                    line: 0,
+                    force: vec2(50.0, 0.0),
+                    enable: Keybind {
+                        activate: vec![KeyCode::Enter],
+                        disable: vec![],
+                    },
+                })
+                .with_internal_spring_end(5, corner_spring)
+                .with_internal_spring_end(9, slight_diagonal_spring)
+                .with_internal_spring_end(6, orthogonal_spring)
+                .point(0.0, 1.0 / 3.0)
+                .with_internal_spring_end(2, corner_spring)
+                .with_internal_spring_end(7, orthogonal_spring)
+                .with_internal_spring_end(8, slight_diagonal_spring)
+                .build(),
+        );
+    }
 
     for x in 0..12 {
         for y in 2..12 {
@@ -165,6 +228,7 @@ fn assemble_simulation() -> Simulation {
                 .base_spring({
                     LinearSpring {
                         force_constant: 25.0,
+                        maximum_force: 1.0,
                         ..Default::default()
                     }
                 })

@@ -103,8 +103,14 @@ impl Simulation {
     pub fn tick_simulation(&mut self, dt: f32) {
         self.update_grabbing(dt);
 
-        for (_, soft_body) in &mut self.soft_bodies {
-            soft_body.apply_impulse_and_velocity(dt);
+        let mut unstable_soft_bodies = Vec::new();
+
+        for (i, &key) in self.keys.iter().enumerate() {
+            let unstable = self.soft_bodies[key].apply_impulse_and_velocity(dt);
+
+            if unstable {
+                unstable_soft_bodies.push((i, key));
+            }
         }
 
         let mut empty_constraints = Vec::new();
@@ -133,6 +139,10 @@ impl Simulation {
                     second.check_points_against_other_one_sided(first);
                 }
             }
+        }
+
+        for (i, key) in unstable_soft_bodies {
+            self.destroy_soft_body(key, Some(i));
         }
 
         let mut i = 0;
@@ -366,7 +376,7 @@ impl Simulation {
                 let (point_a, _) = &mut soft_body_a.shape[point_a];
                 let (point_b, _) = &mut soft_body_b.shape[point_b];
 
-                let (_, _, impulse) = Self::GRAB_SPRING.get_force(point_a, point_b);
+                let (_, _, impulse, _) = Self::GRAB_SPRING.get_force(point_a, point_b);
 
                 point_a.impulse += impulse / 2.0 * dt * point_a.mass;
             }

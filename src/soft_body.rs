@@ -6,6 +6,7 @@ use std::{
 use earcut::Earcut;
 use macroquad::{
     color::{Color, colors},
+    input::{self, KeyCode},
     math::{Vec2, vec2},
     models::{self, Mesh},
     shapes,
@@ -33,6 +34,7 @@ pub struct SoftBody {
     pub debris_age: Option<f32>,
 
     pub attatchment_points: Vec<AttatchmentPoint>,
+    pub actors: Vec<Actor>,
 }
 
 impl SoftBody {
@@ -78,6 +80,7 @@ impl SoftBody {
             debris_age: None,
 
             attatchment_points: Vec::new(),
+            actors: Vec::new(),
         };
 
         soft_body.update_triangulation_indecies();
@@ -85,7 +88,9 @@ impl SoftBody {
     }
 
     pub fn draw(&self) {
+        self.draw_actors_back();
         self.fill_color(Self::FILL_COLOR);
+        self.draw_actors_front();
     }
 
     pub fn draw_attatchment_points(&self) {
@@ -183,6 +188,34 @@ impl SoftBody {
         models::draw_mesh(&mesh);
     }
 
+    pub fn draw_actors_back(&self) {
+        for actor in &self.actors {
+            match actor {
+                Actor::RocketMotor { line, enable, .. } => {
+                    let (point_a, _, point_b) = self.get_line(*line).unwrap();
+                    utils::draw_line(
+                        point_a.position.lerp(point_b.position, -0.5),
+                        point_b.position.lerp(point_a.position, -0.5),
+                        0.1,
+                        if enable.is_down() {
+                            colors::RED
+                        } else {
+                            colors::GREEN
+                        },
+                    );
+                }
+            }
+        }
+    }
+
+    pub fn draw_actors_front(&self) {
+        for actor in &self.actors {
+            match actor {
+                Actor::RocketMotor { .. } => {}
+            }
+        }
+    }
+
     pub fn draw_springs(&self) {
         if self.shape.len() > 1 {
             for i in 0..self.shape.len() {
@@ -208,7 +241,11 @@ impl SoftBody {
         }
     }
 
-    pub fn apply_impulse_and_velocity(&mut self, dt: f32) {
+    #[must_use]
+    pub fn apply_impulse_and_velocity(&mut self, dt: f32) -> bool {
+        let mut maximum_reached = false;
+
+        self.update_actors(dt);
         self.add_pressure_impulse(dt);
 
         if let Some(debris_age) = &mut self.debris_age {
@@ -236,14 +273,14 @@ impl SoftBody {
             for i in 0..self.shape.len() {
                 let (point_a, line, point_b) = self.get_line_mut(i).unwrap();
 
-                line.spring.apply_force(point_a, point_b, dt);
+                maximum_reached |= line.spring.apply_force(point_a, point_b, dt);
             }
 
             // Internal Linear Springs
             for &(indecies, ref spring) in &self.internal_springs {
                 let [(point_a, _), (point_b, _)] = self.shape.get_disjoint_mut(indecies).unwrap();
 
-                spring.apply_force(point_a, point_b, dt);
+                maximum_reached |= spring.apply_force(point_a, point_b, dt);
             }
         }
 
@@ -254,6 +291,8 @@ impl SoftBody {
         }
 
         self.update_bounding_box();
+
+        maximum_reached
     }
 
     pub fn add_pressure_impulse(&mut self, dt: f32) {
@@ -277,6 +316,35 @@ impl SoftBody {
 
             point_a.impulse += pressure_force * dt / 2.0;
             point_b.impulse += pressure_force * dt / 2.0;
+        }
+    }
+
+    pub fn update_actors(&mut self, dt: f32) {
+        for actor in &mut self.actors {
+            match actor {
+                Actor::RocketMotor {
+                    line,
+                    force,
+                    enable,
+                } => {
+                    if enable.is_down() {
+                        let i = *line;
+                        let next = if i < self.shape.len() - 1 { i + 1 } else { 0 };
+
+                        let [(point_a, _), (point_b, _)] =
+                            self.shape.get_disjoint_mut([i, next]).unwrap();
+
+                        let direction = (point_b.position - point_a.position)
+                            .normalize_or_zero()
+                            .perp();
+
+                        let impulse = direction.rotate(*force) * dt;
+
+                        point_a.impulse += impulse / 2.0;
+                        point_b.impulse += impulse / 2.0;
+                    }
+                }
+            }
         }
     }
 
@@ -866,6 +934,39 @@ pub struct AttatchmentPointHandle {
     pub index: usize,
 }
 
+#[derive(Clone, Debug)]
+pub enum Actor {
+    RocketMotor {
+        line: usize,
+        force: Vec2,
+        enable: Keybind,
+    },
+}
+
+#[derive(Clone, Debug)]
+pub struct Keybind {
+    pub activate: Vec<KeyCode>,
+    pub disable: Vec<KeyCode>,
+}
+
+impl Keybind {
+    pub fn is_down(&self) -> bool {
+        self.activate_down() && !self.disable_down()
+    }
+
+    pub fn activate_down(&self) -> bool {
+        self.activate
+            .iter()
+            .any(|&key_code| input::is_key_down(key_code))
+    }
+
+    pub fn disable_down(&self) -> bool {
+        self.disable
+            .iter()
+            .any(|&key_code| input::is_key_down(key_code))
+    }
+}
+
 /// If the points are at the exact same position, no force is applied
 #[derive(Clone, Copy, Debug)]
 pub struct LinearSpring {
@@ -880,26 +981,42 @@ pub struct LinearSpring {
 
 impl LinearSpring {
     pub fn draw_line(&self, point_a: &Point, point_b: &Point) {
-        let (force, damping, _) = self.get_force(point_a, point_b);
+        let (force, damping, _, _) = self.get_force(point_a, point_b);
 
         let color = utils::generate_color_for_spring(force, damping);
 
         utils::draw_line(point_a.position, point_b.position, 0.05, color);
     }
 
-    pub fn apply_force(&self, point_a: &mut Point, point_b: &mut Point, dt: f32) {
-        let (_, _, impulse) = self.get_force(point_a, point_b);
+    pub fn apply_force(&self, point_a: &mut Point, point_b: &mut Point, dt: f32) -> bool {
+        let (_, _, impulse, maximum_reached) = self.get_force(point_a, point_b);
 
         point_a.impulse += impulse / 2.0 * dt;
         point_b.impulse -= impulse / 2.0 * dt;
+
+        maximum_reached
     }
 
-    pub fn get_force(&self, point_a: &Point, point_b: &Point) -> (f32, f32, Vec2) {
+    pub fn get_force(&self, point_a: &Point, point_b: &Point) -> (f32, f32, Vec2, bool) {
+        fn clamp(value: f32, range: f32, maximum_reached: &mut bool) -> f32 {
+            if value > range {
+                *maximum_reached = true;
+                range
+            } else if value < -range {
+                *maximum_reached = true;
+                -range
+            } else {
+                value
+            }
+        }
+
+        let mut maximum_reached = false;
+
         let displacement = point_a.position - point_b.position;
         let distance = displacement.length();
 
         if distance <= f32::EPSILON {
-            return (0.0, 0.0, Vec2::ZERO);
+            return (0.0, 0.0, Vec2::ZERO, false);
         }
 
         let direction = displacement / distance;
@@ -909,19 +1026,23 @@ impl LinearSpring {
 
         let force = utils::clamp_sign(
             self.force_constant
-                * (self.target_distance - distance).clamp(-self.maximum_force, self.maximum_force),
+                * clamp(
+                    self.target_distance - distance,
+                    self.maximum_force,
+                    &mut maximum_reached,
+                ),
             self.compression,
             self.tension,
         );
         let damping = utils::clamp_sign(
-            -self.damping * normal_velocity.clamp(-self.maximum_damping, self.maximum_damping),
+            -self.damping * clamp(normal_velocity, self.maximum_damping, &mut maximum_reached),
             self.compression,
             self.tension,
         );
 
         let total_force = force + damping;
 
-        (force, damping, direction * total_force)
+        (force, damping, direction * total_force, maximum_reached)
     }
 }
 
@@ -929,12 +1050,12 @@ impl Default for LinearSpring {
     fn default() -> Self {
         Self {
             target_distance: 1.0,
-            force_constant: 250.0,
+            force_constant: 1000.0,
             damping: 50.0,
             compression: true,
             tension: true,
-            maximum_force: 500.0,
-            maximum_damping: 500.0,
+            maximum_force: 0.5,
+            maximum_damping: 100.0,
         }
     }
 }
@@ -1035,11 +1156,11 @@ impl Default for AngularSpring {
     fn default() -> Self {
         Self {
             target_angle: 0.0,
-            force_constant: 20.0,
+            force_constant: 100.0,
             damping: 10.0,
             inwards: true,
             outwards: true,
-            maximum_force: 10.0,
+            maximum_force: 100.0,
             maximum_damping: 10.0,
         }
     }
@@ -1335,6 +1456,16 @@ impl SoftBodyBuilder {
             length,
             connection: None,
         });
+        self
+    }
+
+    pub fn with_actor(mut self, mut actor: Actor) -> Self {
+        match &mut actor {
+            Actor::RocketMotor { line, .. } => {
+                *line = self.soft_body.shape.len() - 1;
+            }
+        }
+        self.soft_body.actors.push(actor);
         self
     }
 }
