@@ -386,25 +386,23 @@ impl SoftBody {
                 let point_a = point_a.position;
                 let point_b = point_b.position;
 
-                if point_a.x <= point.x && point_b.x <= point.x {
+                if point_a.x < point.x && point_b.x < point.x {
                     // Both points are to the left of line
                     continue;
                 }
 
-                if point_a.y >= point.y && point_b.y >= point.y
-                    || point_a.y <= point.y && point_b.y <= point.y
-                {
+                if (point_a.y > point.y) == (point_b.y > point.y) {
                     // Both points are above or below
                     continue;
                 }
 
-                if point_a.x > point.x && point_b.x > point.x {
+                if point_a.x >= point.x && point_b.x >= point.x {
                     // Both points are to the right of the line
                     let max_y = point_a.y.max(point_b.y);
                     let min_y = point_a.y.min(point_b.y);
 
                     if max_y > point.y && min_y <= point.y {
-                        // The lines intersect as one point is above, another is below
+                        // The lines intersect as one point is above and another is below
                         num_intersections += 1;
                         continue;
                     }
@@ -420,9 +418,9 @@ impl SoftBody {
                 let scaled_sin_angle = (right_point - left_point).perp_dot(point - left_point);
 
                 let intersection = if left_point.y > right_point.y {
-                    scaled_sin_angle < 0.0
+                    scaled_sin_angle <= 0.0
                 } else {
-                    scaled_sin_angle > 0.0
+                    scaled_sin_angle >= 0.0
                 };
 
                 if intersection {
@@ -1061,24 +1059,24 @@ impl BoundingBox {
     }
 
     pub fn contains_point(&self, point: Vec2) -> bool {
-        point.x > self.min_corner.x
-            && point.y > self.min_corner.y
-            && point.x < self.max_corner().x
-            && point.y < self.max_corner().y
+        point.x >= self.min_corner.x
+            && point.y >= self.min_corner.y
+            && point.x <= self.max_corner().x
+            && point.y <= self.max_corner().y
     }
 
     pub fn is_point_within_distance(&self, point: Vec2, distance: f32) -> bool {
-        point.x > self.min_corner.x - distance
-            && point.y > self.min_corner.y - distance
-            && point.x < self.max_corner().x + distance
-            && point.y < self.max_corner().y + distance
+        point.x >= self.min_corner.x - distance
+            && point.y >= self.min_corner.y - distance
+            && point.x <= self.max_corner().x + distance
+            && point.y <= self.max_corner().y + distance
     }
 
     pub fn intersects_other(&self, other: &BoundingBox) -> bool {
-        other.max_corner().x > self.min_corner.x
-            && other.max_corner().y > self.min_corner.y
-            && other.min_corner.x < self.max_corner().x
-            && other.min_corner.y < self.max_corner().y
+        other.max_corner().x >= self.min_corner.x
+            && other.max_corner().y >= self.min_corner.y
+            && other.min_corner.x <= self.max_corner().x
+            && other.min_corner.y <= self.max_corner().y
     }
 
     pub fn fit_points(a: Vec2, b: Vec2) -> Self {
