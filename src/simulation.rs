@@ -39,6 +39,16 @@ pub struct InputState {
 }
 
 impl Simulation {
+    pub const GRAB_SPRING: LinearSpring = LinearSpring {
+        target_distance: 0.0,
+        force_constant: 10.0,
+        damping: 2.5,
+        compression: true,
+        tension: true,
+        maximum_force: 0.5,
+        maximum_damping: 50.0,
+    };
+
     pub fn new() -> Self {
         Self {
             soft_bodies: HopSlotMap::default(),
@@ -336,16 +346,6 @@ impl Simulation {
     }
 
     pub fn push_together(&mut self, [handle_a, handle_b]: [AttatchmentPointHandle; 2], dt: f32) {
-        const PULL_SPRING: LinearSpring = LinearSpring {
-            target_distance: 0.0,
-            force_constant: 10.0,
-            damping: 2.5,
-            compression: true,
-            tension: true,
-            maximum_force: 0.5,
-            maximum_damping: 50.0,
-        };
-
         let [soft_body_a, soft_body_b] = self
             .soft_bodies
             .get_disjoint_mut([handle_a.soft_body, handle_b.soft_body])
@@ -366,7 +366,7 @@ impl Simulation {
                 let (point_a, _) = &mut soft_body_a.shape[point_a];
                 let (point_b, _) = &mut soft_body_b.shape[point_b];
 
-                let impulse = PULL_SPRING.get_force(point_a, point_b);
+                let impulse = Self::GRAB_SPRING.get_force(point_a, point_b);
 
                 point_a.impulse += impulse / 2.0 * dt * point_a.mass;
             }
@@ -386,16 +386,6 @@ impl Simulation {
     }
 
     pub fn push_towards_mouse(&mut self, handle: AttatchmentPointHandle, progress: f32, dt: f32) {
-        const GRAB_SPRING: LinearSpring = LinearSpring {
-            target_distance: 0.0,
-            force_constant: 10.0,
-            damping: 2.5,
-            compression: true,
-            tension: true,
-            maximum_force: 0.5,
-            maximum_damping: 50.0,
-        };
-
         let line_offset = progress.floor() as usize;
         let interpolation = progress.rem_euclid(1.0);
 
@@ -425,7 +415,7 @@ impl Simulation {
             ..self.input_state.mouse
         };
 
-        GRAB_SPRING.apply_force(&mut mouse, &mut composite_point, dt);
+        Self::GRAB_SPRING.apply_force(&mut mouse, &mut composite_point, dt);
 
         let impulse = composite_point.impulse;
 
