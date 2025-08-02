@@ -339,11 +339,11 @@ impl Simulation {
         const PULL_SPRING: LinearSpring = LinearSpring {
             target_distance: 0.0,
             force_constant: 10.0,
-            damping: 5.0,
+            damping: 2.5,
             compression: true,
             tension: true,
             maximum_force: 0.5,
-            maximum_damping: 100.0,
+            maximum_damping: 50.0,
         };
 
         let [soft_body_a, soft_body_b] = self
@@ -389,11 +389,11 @@ impl Simulation {
         const GRAB_SPRING: LinearSpring = LinearSpring {
             target_distance: 0.0,
             force_constant: 10.0,
-            damping: 5.0,
+            damping: 2.5,
             compression: true,
             tension: true,
             maximum_force: 0.5,
-            maximum_damping: 100.0,
+            maximum_damping: 50.0,
         };
 
         let line_offset = progress.floor() as usize;
@@ -417,11 +417,15 @@ impl Simulation {
             ..Default::default()
         };
 
-        GRAB_SPRING.apply_force(
-            &mut self.input_state.mouse.clone(),
-            &mut composite_point,
-            dt,
-        );
+        let mut mouse = Point {
+            velocity: self.input_state.mouse.velocity
+                / (self.input_state.mouse.position)
+                    .distance_squared(composite_point.position)
+                    .max(1.0),
+            ..self.input_state.mouse
+        };
+
+        GRAB_SPRING.apply_force(&mut mouse, &mut composite_point, dt);
 
         let impulse = composite_point.impulse;
 
