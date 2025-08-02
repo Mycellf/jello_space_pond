@@ -794,6 +794,7 @@ pub struct Point {
     pub mass: f32,
     pub spring: Option<AngularSpring>,
     pub constraint: Option<ConstraintKey>,
+    pub num_connections: usize,
 }
 
 impl Point {
@@ -820,6 +821,7 @@ impl Default for Point {
             mass: 1.0,
             spring: Some(AngularSpring::default()),
             constraint: None,
+            num_connections: 0,
         }
     }
 }

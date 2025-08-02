@@ -160,8 +160,9 @@ impl Simulation {
         self.input_state.mouse.position = mouse_position;
         self.input_state.mouse.mass = 10000.0;
 
-        self.input_state.grabbing = input::is_mouse_button_down(MouseButton::Left);
         self.input_state.clicking |= input::is_mouse_button_pressed(MouseButton::Left);
+        self.input_state.grabbing =
+            self.input_state.clicking || input::is_mouse_button_down(MouseButton::Left);
 
         let mut selected_attatchment_point = None;
         let mut selected_distance_squared = f32::INFINITY;
@@ -468,8 +469,13 @@ impl Simulation {
         let mut point_b =
             (attatchment_point_b.start_point + attatchment_point_b.length - 1) % length_b;
 
+        let mut new_constraints = Vec::new();
+
         for _ in 0..attatchment_point_a.length {
-            self.insert_constraint(Constraint::HoldTogether {
+            soft_body_a.shape[point_a].0.num_connections += 1;
+            soft_body_b.shape[point_b].0.num_connections += 1;
+
+            new_constraints.push(Constraint::HoldTogether {
                 points: vec![
                     PointHandle {
                         soft_body: handle_a.soft_body,
@@ -495,48 +501,93 @@ impl Simulation {
             }
         }
 
+        for constraint in new_constraints {
+            self.insert_constraint(constraint);
+        }
+
         Some(())
     }
 
     #[must_use]
-    pub fn disconnect_attatchment_point(&mut self, handle: AttatchmentPointHandle) -> Option<()> {
-        let connection = &self
+    pub fn disconnect_attatchment_point(&mut self, handle_a: AttatchmentPointHandle) -> Option<()> {
+        let handle_b = &self
             .soft_bodies
-            .get(handle.soft_body)?
+            .get(handle_a.soft_body)?
             .attatchment_points
-            .get(handle.index)?
+            .get(handle_a.index)?
             .connection?;
 
-        let other_connection = &mut self
+        let other_connection = self
             .soft_bodies
-            .get_mut(connection.soft_body)?
+            .get_mut(handle_b.soft_body)?
             .attatchment_points
-            .get_mut(connection.index)?
+            .get_mut(handle_b.index)?
             .connection;
 
-        if other_connection.is_none() {
+        if other_connection != Some(handle_a) {
             return None;
         }
-        *other_connection = None;
 
-        let soft_body = self.soft_bodies.get_mut(handle.soft_body)?;
-        let length = soft_body.shape.len();
-        let attatchment_point = soft_body.attatchment_points.get_mut(handle.index)?;
+        // let soft_body = self.soft_bodies.get_mut(handle.soft_body)?;
+        // let length = soft_body.shape.len();
+        // let attatchment_point = soft_body.attatchment_points.get_mut(handle.index)?;
+        //
+        // if attatchment_point.connection.is_none() {
+        //     return None;
+        // }
+        // attatchment_point.connection = None;
+        //
+        // let mut i = attatchment_point.start_point;
+        //
+        // for _ in 0..attatchment_point.length {
+        //     soft_body.shape[i].0.constraint = None;
+        //
+        //     if i < length - 1 {
+        //         i += 1;
+        //     } else {
+        //         i = 0;
+        //     }
+        // }
 
-        if attatchment_point.connection.is_none() {
-            return None;
-        }
-        attatchment_point.connection = None;
+        let [soft_body_a, soft_body_b] = self
+            .soft_bodies
+            .get_disjoint_mut([handle_a.soft_body, handle_b.soft_body])?;
 
-        let mut i = attatchment_point.start_point;
+        let length_a = soft_body_a.shape.len();
+        let length_b = soft_body_b.shape.len();
 
-        for _ in 0..attatchment_point.length {
-            soft_body.shape[i].0.constraint = None;
+        let attatchment_point_a = soft_body_a.attatchment_points.get_mut(handle_a.index)?;
+        let attatchment_point_b = soft_body_b.attatchment_points.get_mut(handle_b.index)?;
 
-            if i < length - 1 {
-                i += 1;
+        attatchment_point_a.connection = None;
+        attatchment_point_b.connection = None;
+
+        let mut point_a = attatchment_point_a.start_point;
+        let mut point_b =
+            (attatchment_point_b.start_point + attatchment_point_b.length - 1) % length_b;
+
+        for _ in 0..attatchment_point_a.length {
+            soft_body_a.shape[point_a].0.num_connections -= 1;
+            soft_body_b.shape[point_b].0.num_connections -= 1;
+
+            if soft_body_a.shape[point_a].0.num_connections == 0 {
+                soft_body_a.shape[point_a].0.constraint = None;
+            }
+
+            if soft_body_b.shape[point_b].0.num_connections == 0 {
+                soft_body_b.shape[point_b].0.constraint = None;
+            }
+
+            if point_a < length_a - 1 {
+                point_a += 1;
             } else {
-                i = 0;
+                point_a = 0;
+            }
+
+            if point_b > 0 {
+                point_b -= 1;
+            } else {
+                point_b = length_b - 1;
             }
         }
 
