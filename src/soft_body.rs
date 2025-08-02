@@ -864,6 +864,10 @@ impl SoftBody {
             .filter(|shape| shape.area() > 0.01)
             .collect()
     }
+
+    pub fn is_debris(&self) -> bool {
+        self.debris_age.is_some()
+    }
 }
 
 #[derive(Clone, Copy, Debug)]

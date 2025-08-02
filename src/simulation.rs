@@ -49,6 +49,8 @@ impl Simulation {
         maximum_damping: 50.0,
     };
 
+    pub const MAXIMUM_ATTATCHMENT_DISTANCE: f32 = 0.5;
+
     pub fn new() -> Self {
         Self {
             soft_bodies: HopSlotMap::default(),
@@ -106,9 +108,11 @@ impl Simulation {
         let mut unstable_soft_bodies = Vec::new();
 
         for (i, &key) in self.keys.iter().enumerate() {
-            let unstable = self.soft_bodies[key].apply_impulse_and_velocity(dt);
+            let soft_body = &mut self.soft_bodies[key];
 
-            if unstable {
+            let unstable = soft_body.apply_impulse_and_velocity(dt);
+
+            if unstable && !soft_body.is_debris() {
                 unstable_soft_bodies.push((i, key));
             }
         }
@@ -302,7 +306,10 @@ impl Simulation {
         if let Some(target) = self.input_state.target_attatchment_point {
             if let Some((selected, _)) = self.input_state.selected_attatchment_point {
                 self.input_state.can_connect = self
-                    .are_attatchment_points_within_range([selected, target], 1.0)
+                    .are_attatchment_points_within_range(
+                        [selected, target],
+                        Self::MAXIMUM_ATTATCHMENT_DISTANCE,
+                    )
                     .unwrap_or(false);
             }
         }
@@ -316,7 +323,10 @@ impl Simulation {
             if let Some(target) = self.input_state.target_attatchment_point {
                 if let Some((selected, _)) = self.input_state.selected_attatchment_point {
                     if self
-                        .are_attatchment_points_within_range([selected, target], 1.0)
+                        .are_attatchment_points_within_range(
+                            [selected, target],
+                            Self::MAXIMUM_ATTATCHMENT_DISTANCE,
+                        )
                         .unwrap()
                     {
                         self.connect_attatchment_points([selected, target]).unwrap();
