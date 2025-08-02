@@ -863,6 +863,7 @@ pub struct LinearSpring {
     pub compression: bool,
     pub tension: bool,
     pub maximum_force: f32,
+    pub maximum_damping: f32,
 }
 
 impl LinearSpring {
@@ -903,8 +904,10 @@ impl LinearSpring {
 
         let force = self.force_constant
             * (self.target_distance - distance).clamp(-self.maximum_force, self.maximum_force);
-        let damping =
-            -normal_velocity * self.damping.clamp(-self.maximum_force, self.maximum_force);
+        let damping = -normal_velocity
+            * self
+                .damping
+                .clamp(-self.maximum_damping, self.maximum_damping);
 
         let mut total_force = force + damping;
 
@@ -925,6 +928,7 @@ impl Default for LinearSpring {
             compression: true,
             tension: true,
             maximum_force: 100.0,
+            maximum_damping: 100.0,
         }
     }
 }
@@ -937,6 +941,7 @@ pub struct AngularSpring {
     pub inwards: bool,
     pub outwards: bool,
     pub maximum_force: f32,
+    pub maximum_damping: f32,
 }
 
 impl AngularSpring {
@@ -996,7 +1001,9 @@ impl AngularSpring {
         let force = self.force_constant
             * (self.target_angle - angle).clamp(-self.maximum_force, self.maximum_force);
         let damping = -relative_angular_velocity
-            * self.damping.clamp(-self.maximum_force, self.maximum_force);
+            * self
+                .damping
+                .clamp(-self.maximum_damping, self.maximum_damping);
 
         let mut total_force = force + damping;
 
@@ -1027,6 +1034,7 @@ impl Default for AngularSpring {
             inwards: true,
             outwards: true,
             maximum_force: 10.0,
+            maximum_damping: 10.0,
         }
     }
 }

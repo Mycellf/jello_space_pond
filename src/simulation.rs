@@ -283,7 +283,7 @@ impl Simulation {
             if let Some((selected, _)) = self.input_state.selected_attatchment_point {
                 self.input_state.can_connect = self
                     .are_attatchment_points_within_range([selected, target], 1.0)
-                    .unwrap();
+                    .unwrap_or(false);
             }
         }
 
@@ -339,10 +339,11 @@ impl Simulation {
         const PULL_SPRING: LinearSpring = LinearSpring {
             target_distance: 0.0,
             force_constant: 10.0,
-            damping: 20.0,
+            damping: 5.0,
             compression: true,
             tension: true,
             maximum_force: 0.5,
+            maximum_damping: 100.0,
         };
 
         let [soft_body_a, soft_body_b] = self
@@ -365,16 +366,9 @@ impl Simulation {
                 let (point_a, _) = &mut soft_body_a.shape[point_a];
                 let (point_b, _) = &mut soft_body_b.shape[point_b];
 
-                let spring = LinearSpring {
-                    maximum_force: PULL_SPRING.maximum_force
-                        / point_a.position.distance(point_b.position).max(0.25),
-                    ..PULL_SPRING
-                };
-
-                let impulse = spring.get_force(point_a, point_b);
+                let impulse = PULL_SPRING.get_force(point_a, point_b);
 
                 point_a.impulse += impulse / 2.0 * dt * point_a.mass;
-                point_b.impulse -= impulse / 2.0 * dt * point_b.mass;
             }
 
             if point_a < length_a - 1 {
@@ -395,10 +389,11 @@ impl Simulation {
         const GRAB_SPRING: LinearSpring = LinearSpring {
             target_distance: 0.0,
             force_constant: 10.0,
-            damping: 20.0,
+            damping: 5.0,
             compression: true,
             tension: true,
             maximum_force: 0.5,
+            maximum_damping: 100.0,
         };
 
         let line_offset = progress.floor() as usize;
@@ -422,15 +417,7 @@ impl Simulation {
             ..Default::default()
         };
 
-        let spring = LinearSpring {
-            maximum_force: GRAB_SPRING.maximum_force
-                / (self.input_state.mouse.position)
-                    .distance(composite_point.position)
-                    .max(1.0),
-            ..GRAB_SPRING
-        };
-
-        spring.apply_force(
+        GRAB_SPRING.apply_force(
             &mut self.input_state.mouse.clone(),
             &mut composite_point,
             dt,
