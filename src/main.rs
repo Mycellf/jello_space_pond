@@ -223,7 +223,6 @@ fn assemble_simulation() -> Simulation {
         SoftBodyBuilder::default()
             .gas_force(50.0)
             .mass(10.0)
-            .velocity(5.0, -5.0)
             .offset(-11.1, 7.75)
             .point(0.0, 0.0)
             .with_attatchment_point(1)
