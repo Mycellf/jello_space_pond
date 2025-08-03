@@ -105,7 +105,6 @@ fn assemble_simulation() -> Simulation {
 
     let mut builder = SoftBodyBuilder::default()
         .gas_force(10.0)
-        .friction(1.0)
         .mass(0.5)
         .base_angular_spring(Some(AngularSpring {
             force_constant: 50.0,
