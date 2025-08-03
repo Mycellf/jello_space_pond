@@ -1,4 +1,5 @@
 pub mod constraint;
+pub mod particle;
 pub mod simulation;
 pub mod soft_body;
 pub mod utils;
@@ -191,6 +192,8 @@ fn assemble_simulation() -> Simulation {
                         activate: vec![KeyCode::W],
                         disable: vec![KeyCode::S],
                     },
+                    particle_time: 0.0,
+                    max_particle_time: 0.005,
                 })
                 .with_internal_spring_end(5, corner_spring)
                 .with_internal_spring_end(9, slight_diagonal_spring)

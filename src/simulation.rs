@@ -8,6 +8,7 @@ use slotmap::{HopSlotMap, new_key_type};
 
 use crate::{
     constraint::{Constraint, PointHandle},
+    particle::Particle,
     soft_body::{AttatchmentPointHandle, LinearSpring, Point, SoftBody},
     utils,
 };
@@ -16,6 +17,8 @@ use crate::{
 pub struct Simulation {
     pub soft_bodies: HopSlotMap<SoftBodyKey, SoftBody>,
     pub keys: Vec<SoftBodyKey>,
+
+    pub particles: Vec<Particle>,
 
     pub constraints: HopSlotMap<ConstraintKey, Constraint>,
 
@@ -57,6 +60,8 @@ impl Simulation {
             soft_bodies: HopSlotMap::default(),
             keys: Vec::new(),
 
+            particles: Vec::new(),
+
             constraints: HopSlotMap::default(),
 
             input_state: InputState::default(),
@@ -64,6 +69,10 @@ impl Simulation {
     }
 
     pub fn draw(&self, debug: bool) {
+        for particle in &self.particles {
+            particle.draw();
+        }
+
         for (_, soft_body) in &self.soft_bodies {
             soft_body.draw_actors_back();
         }
@@ -121,7 +130,23 @@ impl Simulation {
     }
 
     pub fn tick_simulation(&mut self, dt: f32) -> Option<Vec2> {
-        let mut new_camera_position = None;
+        for particle in &mut self.particles {
+            particle.tick(dt);
+        }
+
+        let mut i = 0;
+
+        while i < self.particles.len() {
+            let particle = &self.particles[i];
+            if particle.age > particle.end_age {
+                self.particles.remove(i);
+                continue;
+            }
+
+            i += 1;
+        }
+
+        let mut camera_position = None;
 
         self.update_grabbing(dt);
 
@@ -130,10 +155,13 @@ impl Simulation {
         for (i, &key) in self.keys.iter().enumerate() {
             let soft_body = &mut self.soft_bodies[key];
 
-            let (camera, unstable) = soft_body.apply_impulse_and_velocity(dt);
+            let (new_camera_position, mut new_particles, unstable) =
+                soft_body.apply_impulse_and_velocity(dt);
 
-            if new_camera_position.is_none() {
-                new_camera_position = camera;
+            self.particles.append(&mut new_particles);
+
+            if camera_position.is_none() {
+                camera_position = new_camera_position;
             }
 
             if unstable && !soft_body.is_debris() {
@@ -202,7 +230,7 @@ impl Simulation {
 
         self.input_state.clicking = false;
 
-        new_camera_position
+        camera_position
     }
 
     pub fn update_input(&mut self, camera: &Camera2D, dt: f32) {

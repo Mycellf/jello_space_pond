@@ -1,4 +1,5 @@
 use std::{
+    f32::consts::TAU,
     slice::GetDisjointMutError,
     sync::{LazyLock, Mutex},
 };
@@ -14,6 +15,7 @@ use macroquad::{
 };
 
 use crate::{
+    particle::{Particle, Shape},
     simulation::{ConstraintKey, SoftBodyKey},
     utils,
 };
@@ -192,13 +194,17 @@ impl SoftBody {
                 Actor::RocketMotor { line, enable, .. } => {
                     let (point_a, _, point_b) = self.get_line(*line).unwrap();
                     utils::draw_line(
-                        point_a.position.lerp(point_b.position, -0.5),
-                        point_b.position.lerp(point_a.position, -0.5),
-                        0.1,
+                        point_a.position.lerp(point_b.position, -0.9),
+                        point_b.position.lerp(point_a.position, -0.9),
+                        0.2,
                         if enable.is_down() {
-                            colors::RED
+                            utils::color_lerp(
+                                colors::RED,
+                                colors::YELLOW,
+                                macroquad::rand::gen_range(0.0, 1.0),
+                            )
                         } else {
-                            colors::GREEN
+                            colors::DARKGRAY
                         },
                     );
                 }
@@ -255,9 +261,9 @@ impl SoftBody {
     }
 
     #[must_use]
-    pub fn apply_impulse_and_velocity(&mut self, dt: f32) -> (Option<Vec2>, bool) {
+    pub fn apply_impulse_and_velocity(&mut self, dt: f32) -> (Option<Vec2>, Vec<Particle>, bool) {
         let mut maximum_reached = false;
-        let new_camera_position = self.update_actors(dt);
+        let (new_camera_position, new_particles) = self.update_actors(dt);
 
         self.add_pressure_impulse(dt);
 
@@ -305,7 +311,7 @@ impl SoftBody {
 
         self.update_bounding_box();
 
-        (new_camera_position, maximum_reached)
+        (new_camera_position, new_particles, maximum_reached)
     }
 
     pub fn add_pressure_impulse(&mut self, dt: f32) {
@@ -332,15 +338,20 @@ impl SoftBody {
         }
     }
 
-    pub fn update_actors(&mut self, dt: f32) -> Option<Vec2> {
+    pub fn update_actors(&mut self, dt: f32) -> (Option<Vec2>, Vec<Particle>) {
         let mut new_camera_position = None;
+        let mut new_particles = Vec::new();
 
-        for actor in &self.actors {
+        let center_of_mass = self.center_of_mass();
+
+        for actor in &mut self.actors {
             match actor {
                 Actor::RocketMotor {
                     line,
                     force,
                     enable,
+                    particle_time,
+                    max_particle_time,
                 } => {
                     if enable.is_down() {
                         let i = *line;
@@ -350,24 +361,65 @@ impl SoftBody {
                             self.shape.get_disjoint_mut([i, next]).unwrap();
 
                         let direction = (point_b.position - point_a.position)
-                            .normalize_or_zero()
-                            .perp();
+                            .perp()
+                            .normalize_or_zero();
 
-                        let impulse = direction.rotate(*force) * dt;
+                        let force = direction.rotate(*force);
 
-                        point_a.impulse += impulse / 2.0;
-                        point_b.impulse += impulse / 2.0;
+                        point_a.impulse += force / 2.0 * dt;
+                        point_b.impulse += force / 2.0 * dt;
+
+                        *particle_time += dt;
+                        while particle_time > max_particle_time {
+                            let color = utils::color_lerp(
+                                colors::RED,
+                                colors::YELLOW,
+                                macroquad::rand::gen_range(0.0, 1.0),
+                            );
+
+                            let velocity = -direction * macroquad::rand::gen_range(10.0, 30.0)
+                                + direction.perp() * macroquad::rand::gen_range(-2.0, 2.0)
+                                + (point_a.velocity + point_b.velocity) / 2.0;
+
+                            let shape = if macroquad::rand::rand() & 1 != 0 {
+                                Shape::Circle
+                            } else {
+                                Shape::Rectangle {
+                                    aspect: macroquad::rand::gen_range(0.5, 1.0),
+                                }
+                            };
+
+                            let rotation = macroquad::rand::gen_range(0.0, TAU);
+
+                            new_particles.push(Particle {
+                                position: point_a
+                                    .position
+                                    .lerp(point_b.position, macroquad::rand::gen_range(-0.9, 1.9)),
+                                shape,
+                                age: 0.0,
+                                end_age: 1.0,
+                                start_velocity: velocity,
+                                end_velocity: velocity,
+                                start_color: color,
+                                end_color: Color { a: 0.0, ..color },
+                                start_rotation: rotation,
+                                end_rotation: rotation + macroquad::rand::gen_range(-10.0, 10.0),
+                                start_size: macroquad::rand::gen_range(0.1, 0.2),
+                                end_size: macroquad::rand::gen_range(0.1, 0.2),
+                            });
+                            *particle_time -= *max_particle_time;
+                        }
                     }
                 }
                 Actor::HabitatBubble { minimum_pressure } => {
                     if self.pressure > *minimum_pressure {
-                        new_camera_position = Some(self.center_of_mass())
+                        new_camera_position = Some(center_of_mass);
                     };
                 }
             }
         }
 
-        new_camera_position
+        (new_camera_position, new_particles)
     }
 
     pub fn update_bounding_box(&mut self) {
@@ -976,6 +1028,8 @@ pub enum Actor {
         line: usize,
         force: Vec2,
         enable: Keybind,
+        particle_time: f32,
+        max_particle_time: f32,
     },
     HabitatBubble {
         minimum_pressure: f32,
