@@ -148,5 +148,5 @@ pub fn line_segment_intersection(
         && t_times_divisor <= divisor
         && u_times_divisor >= 0.0
         && u_times_divisor <= divisor)
-        .then(|| ([t_times_divisor, u_times_divisor], divisor))
+        .then_some(([t_times_divisor, u_times_divisor], divisor))
 }

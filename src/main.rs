@@ -1,4 +1,5 @@
 pub mod constraint;
+pub mod loop_crafting;
 pub mod particle;
 pub mod simulation;
 pub mod soft_body;

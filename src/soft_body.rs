@@ -912,7 +912,7 @@ impl SoftBody {
             .chunks_exact(3)
             .map(|chunk| {
                 let mut shape = chunk
-                    .into_iter()
+                    .iter()
                     .map(|&index| self.shape[index as usize])
                     .collect::<Vec<_>>();
 
