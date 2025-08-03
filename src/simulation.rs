@@ -52,6 +52,15 @@ impl Simulation {
         maximum_force: 0.5,
         maximum_damping: 50.0,
     };
+    pub const ALIGN_SPRING: LinearSpring = LinearSpring {
+        target_distance: 0.0,
+        force_constant: 50.0,
+        damping: 50.0,
+        compression: true,
+        tension: true,
+        maximum_force: 50.0,
+        maximum_damping: 50.0,
+    };
 
     pub const MAXIMUM_ATTATCHMENT_DISTANCE: f32 = 0.5;
 
@@ -431,6 +440,15 @@ impl Simulation {
         let attatchment_point_a = soft_body_a.attatchment_points[handle_a.index];
         let attatchment_point_b = soft_body_b.attatchment_points[handle_b.index];
 
+        let mut mass_moment_a = Vec2::ZERO;
+        let mut mass_moment_b = Vec2::ZERO;
+
+        let mut momentum_a = Vec2::ZERO;
+        let mut momentum_b = Vec2::ZERO;
+
+        let mut total_mass_a = 0.0;
+        let mut total_mass_b = 0.0;
+
         let mut point_a = attatchment_point_a.start_point;
         let mut point_b =
             (attatchment_point_b.start_point + attatchment_point_b.length - 1) % length_b;
@@ -440,9 +458,61 @@ impl Simulation {
                 let (point_a, _) = &mut soft_body_a.shape[point_a];
                 let (point_b, _) = &mut soft_body_b.shape[point_b];
 
+                mass_moment_a += point_a.position * point_a.mass;
+                mass_moment_b += point_b.position * point_b.mass;
+
+                momentum_a += point_a.velocity * point_a.mass;
+                momentum_b += point_b.velocity * point_b.mass;
+
+                total_mass_a += point_a.mass;
+                total_mass_b += point_b.mass;
+
                 let (_, _, impulse, _) = Self::GRAB_SPRING.get_force(point_a, point_b);
 
                 point_a.impulse += impulse / 2.0 * dt * point_a.mass;
+            }
+
+            if point_a < length_a - 1 {
+                point_a += 1;
+            } else {
+                point_a = 0;
+            }
+
+            if point_b > 0 {
+                point_b -= 1;
+            } else {
+                point_b = length_b - 1;
+            }
+        }
+
+        let center_of_mass_a = mass_moment_a / total_mass_a;
+        let center_of_mass_b = mass_moment_b / total_mass_b;
+        let position_offset = center_of_mass_a - center_of_mass_b;
+
+        let velocity_a = momentum_a / total_mass_a;
+        let velocity_b = momentum_b / total_mass_b;
+
+        let velocity_offset = velocity_a - velocity_b;
+
+        let mut point_a = attatchment_point_a.start_point;
+        let mut point_b =
+            (attatchment_point_b.start_point + attatchment_point_b.length - 1) % length_b;
+
+        for _ in 0..attatchment_point_a.length {
+            {
+                let (point_a, _) = &mut soft_body_a.shape[point_a];
+                let (point_b, _) = &mut soft_body_b.shape[point_b];
+
+                let mut moved_point_b = Point {
+                    position: point_b.position + position_offset,
+                    velocity: point_b.velocity + velocity_offset,
+                    ..*point_b
+                };
+
+                let (_, _, impulse, _) = Self::ALIGN_SPRING.get_force(point_a, &mut moved_point_b);
+
+                point_a.impulse += impulse / 2.0 * dt * point_a.mass;
+                point_b.impulse -= impulse / 2.0 * dt * point_b.mass;
             }
 
             if point_a < length_a - 1 {
