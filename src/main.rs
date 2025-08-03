@@ -148,7 +148,7 @@ fn assemble_simulation() -> Simulation {
         ..Default::default()
     };
 
-    for i in 0..5 {
+    for i in 0..10 {
         simulation.soft_bodies.insert(
             SoftBodyBuilder::default()
                 .offset(i as f32 * 2.0, 0.0)
@@ -188,8 +188,8 @@ fn assemble_simulation() -> Simulation {
                     line: 0,
                     force: vec2(50.0, 0.0),
                     enable: Keybind {
-                        activate: vec![KeyCode::Enter],
-                        disable: vec![],
+                        activate: vec![KeyCode::W],
+                        disable: vec![KeyCode::S],
                     },
                 })
                 .with_internal_spring_end(5, corner_spring)
