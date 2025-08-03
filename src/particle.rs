@@ -50,6 +50,10 @@ impl Particle {
     pub fn progress(&self) -> f32 {
         self.age / self.end_age
     }
+
+    pub fn size(&self) -> f32 {
+        self.start_size.lerp(self.end_size, self.age / self.end_age)
+    }
 }
 
 #[derive(Clone, Copy, Debug)]

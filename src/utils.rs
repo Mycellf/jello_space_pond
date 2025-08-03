@@ -125,8 +125,8 @@ pub fn line_segment_intersection(
     [a1, b1]: [Vec2; 2],
     [a2, b2]: [Vec2; 2],
 ) -> Option<([f32; 2], f32)> {
-    let first_bounding_box = BoundingBox::fit_points(a1, b1);
-    let second_bounding_box = BoundingBox::fit_points(a2, b2);
+    let first_bounding_box = BoundingBox::fit_points(&[a1, b1]);
+    let second_bounding_box = BoundingBox::fit_points(&[a2, b2]);
 
     if !first_bounding_box.intersects_other(&second_bounding_box) {
         return None;
@@ -198,4 +198,13 @@ impl<T: RotateClockwise> RotateClockwise for Option<T> {
             None
         }
     }
+}
+
+pub fn bounding_box_of_camera(camera: &Camera2D) -> BoundingBox {
+    BoundingBox::fit_points(&[
+        camera.screen_to_world(vec2(0.0, 0.0)),
+        camera.screen_to_world(vec2(window::screen_width(), 0.0)),
+        camera.screen_to_world(vec2(window::screen_width(), window::screen_height())),
+        camera.screen_to_world(vec2(0.0, window::screen_height())),
+    ])
 }

@@ -1482,12 +1482,26 @@ impl BoundingBox {
             && other.min_corner.y <= self.max_corner().y
     }
 
-    pub fn fit_points(a: Vec2, b: Vec2) -> Self {
-        let min_x = a.x.min(b.x);
-        let max_x = a.x.max(b.x);
+    pub fn is_other_within_distance(&self, other: &BoundingBox, distance: f32) -> bool {
+        other.max_corner().x >= self.min_corner.x - distance
+            && other.max_corner().y >= self.min_corner.y - distance
+            && other.min_corner.x <= self.max_corner().x + distance
+            && other.min_corner.y <= self.max_corner().y + distance
+    }
 
-        let min_y = a.y.min(b.y);
-        let max_y = a.y.max(b.y);
+    pub fn fit_points(points: &[Vec2]) -> Self {
+        if points.is_empty() {
+            return Self::default();
+        }
+
+        let x_positions = points.iter().map(|point| point.x);
+        let y_positions = points.iter().map(|point| point.y);
+
+        let min_x = x_positions.clone().reduce(|a, b| a.min(b)).unwrap();
+        let max_x = x_positions.reduce(|a, b| a.max(b)).unwrap();
+
+        let min_y = y_positions.clone().reduce(|a, b| a.min(b)).unwrap();
+        let max_y = y_positions.reduce(|a, b| a.max(b)).unwrap();
 
         Self {
             min_corner: vec2(min_x, min_y),

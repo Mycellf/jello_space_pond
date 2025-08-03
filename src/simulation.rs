@@ -12,8 +12,8 @@ use crate::{
     constraint::{Constraint, PointHandle},
     particle::Particle,
     soft_body::{
-        Actor, AttatchmentPointHandle, ConnectionState, JoiningSpring, Keybind, LinearSpring,
-        Point, SoftBody,
+        Actor, AttatchmentPointHandle, BoundingBox, ConnectionState, JoiningSpring, Keybind,
+        LinearSpring, Point, SoftBody,
     },
     utils,
 };
@@ -110,17 +110,23 @@ impl Simulation {
         }
     }
 
-    pub fn draw(&self, debug: bool) {
+    pub fn draw(&self, debug: bool, bounding_box: BoundingBox) {
         for particle in &self.particles {
-            particle.draw();
+            if bounding_box.is_point_within_distance(particle.position, particle.size()) {
+                particle.draw();
+            }
         }
 
         for (_, soft_body) in &self.soft_bodies {
-            soft_body.draw_actors_back();
+            if bounding_box.is_other_within_distance(&soft_body.bounding_box, 0.2) {
+                soft_body.draw_actors_back();
+            }
         }
 
         for (_, soft_body) in &self.soft_bodies {
-            soft_body.draw();
+            if bounding_box.is_other_within_distance(&soft_body.bounding_box, 0.2) {
+                soft_body.draw();
+            }
         }
 
         if let Some(selected) = self.input_state.selected_soft_body {
@@ -130,11 +136,15 @@ impl Simulation {
         }
 
         for (_, soft_body) in &self.soft_bodies {
-            soft_body.draw_actors_front();
+            if bounding_box.is_other_within_distance(&soft_body.bounding_box, 0.2) {
+                soft_body.draw_actors_front();
+            }
         }
 
         for (_, soft_body) in &self.soft_bodies {
-            soft_body.draw_attatchment_points();
+            if bounding_box.is_other_within_distance(&soft_body.bounding_box, 0.2) {
+                soft_body.draw_attatchment_points();
+            }
         }
 
         let color = if self.input_state.target_attatchment_point.is_some()
@@ -168,7 +178,9 @@ impl Simulation {
             }
 
             for (_, soft_body) in &self.soft_bodies {
-                soft_body.draw_springs();
+                if bounding_box.is_other_within_distance(&soft_body.bounding_box, 0.2) {
+                    soft_body.draw_springs();
+                }
             }
         }
 

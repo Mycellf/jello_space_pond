@@ -122,7 +122,7 @@ async fn main() {
 
         camera::set_camera(&camera);
 
-        simulation.draw(debug);
+        simulation.draw(debug, utils::bounding_box_of_camera(&camera));
 
         window::next_frame().await;
     }
