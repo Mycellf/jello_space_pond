@@ -1,4 +1,4 @@
-use egui::{Button, Context, Ui, vec2};
+use egui::{Button, Context, Slider, Ui, vec2};
 use macroquad::{
     camera::Camera2D,
     color::{Color, colors},
@@ -540,7 +540,7 @@ impl Simulation {
 
         window.show(egui, |ui| {
             let Some(soft_body_key) = self.input_state.selected_soft_body else {
-                ui.label("This is a simple sandbox for building spaceships.");
+                ui.label("This is a soft body physics sandbox for building spaceships.");
                 ui.label("The orb with a white circle inside of it is your habitat bubble. If it is destroyed, \
                     you will need to restart the program to regain control of the camera and interactables.");
                 ui.label("Click and drag on a white line to connect it to another or move it around. After \
@@ -560,7 +560,7 @@ impl Simulation {
                 self.input_state.keybind_focus = None;
             }
 
-            let mut show_keybind = |name: &str, keybind: &mut Keybind| {
+            let mut show_keybind = |name: &str, keybind: &mut Keybind, ui: &mut Ui| {
                 let mut show_key = |focus: KeybindFocus, key: Option<&KeyCode>, ui: &mut Ui| {
                     ui.horizontal(|ui| {
                         let focused = self.input_state.keybind_focus == Some(focus);
@@ -645,7 +645,20 @@ impl Simulation {
 
             for actor in &mut soft_body.actors {
                 match actor {
-                    Actor::RocketMotor { enable, .. } => show_keybind("Enable Thrust", enable),
+                    Actor::RocketMotor { force, enable, max_particle_time, .. } => {
+                        show_keybind("Enable Thrust", enable, ui);
+                        ui.add_space(5.0);
+
+                        ui.label("Force");
+                        let length = force.length();
+                        let mut new_length = length;
+                        ui.add(Slider::new(&mut new_length, 25.0..=200.0));
+
+                        if length != new_length {
+                            *force = force.normalize_or_zero() * new_length;
+                            *max_particle_time = 0.5 / new_length;
+                        }
+                    },
                     Actor::HabitatBubble { .. } => (),
                 }
             }
