@@ -149,6 +149,29 @@ fn assemble_simulation() -> Simulation {
         ..Default::default()
     };
 
+    let keybinds = [
+        [
+            Keybind {
+                activate: vec![KeyCode::S, KeyCode::A],
+                disable: vec![KeyCode::W, KeyCode::D],
+            },
+            Keybind {
+                activate: vec![KeyCode::W, KeyCode::D],
+                disable: vec![KeyCode::S, KeyCode::A],
+            },
+        ],
+        [
+            Keybind {
+                activate: vec![KeyCode::S, KeyCode::D],
+                disable: vec![KeyCode::W, KeyCode::A],
+            },
+            Keybind {
+                activate: vec![KeyCode::W, KeyCode::A],
+                disable: vec![KeyCode::S, KeyCode::D],
+            },
+        ],
+    ];
+
     for i in 0..10 {
         simulation.soft_bodies.insert(
             SoftBodyBuilder::default()
@@ -156,6 +179,7 @@ fn assemble_simulation() -> Simulation {
                 .point(0.0, 0.0)
                 .with_attatchment_point(4)
                 .with_internal_spring_start(0)
+                .with_internal_spring_start(12)
                 .point(1.0 / 3.0, 0.0)
                 .with_internal_spring_start(2)
                 .with_internal_spring_start(10)
@@ -168,19 +192,18 @@ fn assemble_simulation() -> Simulation {
                 .point(1.0, 1.0 / 3.0)
                 .with_actor(Actor::RocketMotor {
                     line: 0,
-                    force: vec2(50.0, 0.0),
-                    enable: Keybind {
-                        activate: vec![KeyCode::S],
-                        disable: vec![KeyCode::W],
-                    },
+                    force: vec2(100.0, 0.0),
+                    enable: keybinds[i % 2][0].clone(),
                     particle_time: 0.0,
                     max_particle_time: 0.005,
                 })
                 .with_internal_spring_start(7)
                 .with_internal_spring_end(3, corner_spring)
+                .with_internal_spring_end(12, slight_diagonal_spring)
                 .point(1.0, 2.0 / 3.0)
                 .with_internal_spring_start(4)
                 .with_internal_spring_start(6)
+                .with_internal_spring_start(13)
                 .point(1.0, 1.0)
                 .with_attatchment_point(4)
                 .with_internal_spring_start(9)
@@ -193,14 +216,12 @@ fn assemble_simulation() -> Simulation {
                 .with_internal_spring_end(10, orthogonal_spring)
                 .point(0.0, 1.0)
                 .with_internal_spring_end(1, diagonal_spring)
+                .with_internal_spring_end(13, slight_diagonal_spring)
                 .point(0.0, 2.0 / 3.0)
                 .with_actor(Actor::RocketMotor {
                     line: 0,
-                    force: vec2(50.0, 0.0),
-                    enable: Keybind {
-                        activate: vec![KeyCode::W],
-                        disable: vec![KeyCode::S],
-                    },
+                    force: vec2(100.0, 0.0),
+                    enable: keybinds[i % 2][1].clone(),
                     particle_time: 0.0,
                     max_particle_time: 0.005,
                 })
