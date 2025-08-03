@@ -84,6 +84,7 @@ impl SoftBody {
     };
 
     pub const FILL_COLOR: Color = colors::LIGHTGRAY;
+    pub const OUTLINE_COLOR: Color = colors::GRAY;
 
     pub const ATTATCHMENT_POINT_PADDING: f32 = 0.25;
 
@@ -121,6 +122,7 @@ impl SoftBody {
 
     pub fn draw(&self) {
         self.fill_color(Self::FILL_COLOR);
+        self.outline_color(0.025, Self::OUTLINE_COLOR);
     }
 
     pub fn draw_attatchment_points(&self) {
