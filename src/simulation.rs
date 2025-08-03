@@ -675,15 +675,35 @@ impl Simulation {
 
                         ui.add_space(5.0);
 
+                        let &(_, off_length, on_length) = lengths.first().unwrap();
+
+                        let mut invert = off_length > on_length;
+                        ui.checkbox(&mut invert, "Invert");
+
+                        if (off_length > on_length) != invert {
+                            for (_, off_length, on_length) in &mut *lengths {
+                                std::mem::swap(off_length, on_length);
+                            }
+                        }
+
+                        ui.add_space(5.0);
+
                         ui.label("Length");
-                        let (_, off_length, on_length) = lengths.first().unwrap();
-                        let length = on_length / off_length;
+                        let length = if off_length > on_length {
+                            off_length / on_length
+                        } else {
+                            on_length / off_length
+                        };
                         let mut new_length = length;
                         ui.add(Slider::new(&mut new_length, 1.0..=6.0));
 
                         if length != new_length {
                             for (_, off_length, on_length) in lengths {
-                                *on_length = *off_length * new_length;
+                                if off_length > on_length {
+                                    *off_length = *on_length * new_length;
+                                } else {
+                                    *on_length = *off_length * new_length;
+                                }
                             }
                         }
                     }
