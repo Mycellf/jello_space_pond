@@ -1,9 +1,9 @@
-use egui::{Button, Context, Slider, Ui, vec2};
+use egui::{Button, Context, Label, Sense, Slider, Ui};
 use macroquad::{
     camera::Camera2D,
     color::{Color, colors},
     input::{self, KeyCode, MouseButton},
-    math::Vec2,
+    math::{Vec2, vec2},
     window,
 };
 use slotmap::{HopSlotMap, new_key_type};
@@ -52,6 +52,9 @@ pub struct InputState {
     pub selected_soft_body: Option<SoftBodyKey>,
 
     pub keybind_focus: Option<KeybindFocus>,
+
+    pub following_camera: bool,
+    pub show_respawn_message: bool,
 }
 
 impl Default for InputState {
@@ -72,6 +75,9 @@ impl Default for InputState {
             selected_soft_body: None,
 
             keybind_focus: None,
+
+            following_camera: false,
+            show_respawn_message: false,
         }
     }
 }
@@ -315,6 +321,13 @@ impl Simulation {
 
         self.input_state.clicking = false;
 
+        if camera_position.is_none() && self.input_state.following_camera {
+            self.input_state.selected_soft_body = None;
+            self.input_state.show_respawn_message = true;
+            self.input_state.editing = true;
+        }
+        self.input_state.following_camera = camera_position.is_some();
+
         camera_position
     }
 
@@ -489,7 +502,9 @@ impl Simulation {
         }
 
         if !self.input_state.ui_hovered {
-            if input::is_mouse_button_pressed(MouseButton::Left) {
+            if input::is_mouse_button_pressed(MouseButton::Left)
+                && self.input_state.selected_soft_body.is_some()
+            {
                 self.input_state.editing = false;
             }
 
@@ -519,6 +534,37 @@ impl Simulation {
                 self.input_state.editing = true;
                 self.input_state.selected_soft_body = None;
             }
+
+            self.input_state.show_respawn_message = false;
+        }
+
+        if input::is_key_pressed(KeyCode::R)
+            && (input::is_key_down(KeyCode::LeftShift) || input::is_key_down(KeyCode::RightShift))
+            && (input::is_key_down(KeyCode::LeftControl)
+                || input::is_key_down(KeyCode::RightControl))
+        {
+            let mut i = 0;
+
+            while i < self.keys.len() {
+                let key = self.keys[i];
+
+                if self.soft_bodies[key]
+                    .actors
+                    .iter()
+                    .any(|actor| matches!(actor, Actor::HabitatBubble { .. }))
+                {
+                    self.destroy_soft_body(key, Some(i));
+                    continue;
+                }
+
+                i += 1;
+            }
+
+            let key = self
+                .soft_bodies
+                .insert(crate::habitat_bubble(vec2(-5.0, 0.0)));
+
+            self.keys.push(key);
         }
     }
 
@@ -539,22 +585,31 @@ impl Simulation {
             .collapsible(false)
             .open(&mut self.input_state.editing);
 
+        let mut close_window = false;
+
         window.show(egui, |ui| {
             let Some(soft_body_key) = self.input_state.selected_soft_body else {
-                ui.label("This is a physics sandbox for building spaceships.");
-                ui.label("The orb with a white circle inside of it is your habitat bubble. If it is destroyed, \
-                    you will need to restart the program to regain control of the camera and interactables.");
-                ui.label("Click and drag on a white line to connect it to another or move it around. After \
-                    being connected, click on it again to disconnect.");
-                ui.label("Right click on an interactible to view and edit its keybinds. It can be used when \
-                    connected to your habitat bubble.");
-                ui.label("You can drag the edge of your habitat bubble to move. Scroll to zoom the camera.");
-                ui.label("Press F1 to toggle this menu.");
+                if self.input_state.show_respawn_message {
+                    ui.label("Press Shift + Control + R to respawn.");
+                } else {
+                    ui.label("This is a physics sandbox for building spaceships.");
+                    ui.label("The orb with a white circle inside of it is your habitat bubble. If it is destroyed, \
+                        press Shift + Control + R to create a new one.");
+                    ui.label("Click and drag on a white line to connect it to another or move it around. After \
+                        being connected, click on it again to disconnect.");
+                    ui.label("Right click on an interactible to view and edit its keybinds. It can be used when \
+                        connected to your habitat bubble.");
+                    ui.label("You can drag the edge of your habitat bubble to move. Scroll to zoom the camera.");
+                    if ui.add(Label::new("Press F1 to toggle this menu.").sense(Sense::click())).clicked() {
+                        close_window = true;
+                    };
+                }
 
                 return;
             };
 
             let Some(soft_body) = self.soft_bodies.get_mut(soft_body_key) else {
+                close_window = true;
                 return;
             };
 
@@ -568,9 +623,9 @@ impl Simulation {
                         let focused = self.input_state.keybind_focus == Some(focus);
 
                         let size = if key.is_some() {
-                            vec2(150.0, 0.0)
+                            egui::vec2(150.0, 0.0)
                         } else {
-                            vec2(20.0, 20.0)
+                            egui::vec2(20.0, 20.0)
                         };
 
                         let button = if focused {
@@ -711,6 +766,10 @@ impl Simulation {
                 }
             }
         });
+
+        if close_window {
+            self.input_state.editing = false;
+        }
     }
 
     pub fn update_grabbing(&mut self, dt: f32) {

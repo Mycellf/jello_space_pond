@@ -19,7 +19,7 @@ use crate::{
     simulation::Simulation,
     soft_body::{
         Actor, AngularSpring, AttatchmentPointHandle, ConnectionState, Keybind, LinearSpring,
-        SoftBodyBuilder, SpringIndex,
+        SoftBody, SoftBodyBuilder, SpringIndex,
     },
 };
 
@@ -145,32 +145,9 @@ async fn main() {
 fn assemble_simulation() -> Simulation {
     let mut simulation = Simulation::new();
 
-    let mut builder = SoftBodyBuilder::default()
-        .connection_state(ConnectionState::Source)
-        .gas_force(10.0)
-        .mass(0.5)
-        .base_angular_spring(Some(AngularSpring {
-            force_constant: 50.0,
-            damping: 5.0,
-            ..Default::default()
-        }))
-        .spring_scale(0.75)
-        .with_actor(Actor::HabitatBubble {
-            minimum_pressure: 0.5,
-        })
-        .offset(-5.0, 0.0);
-
-    for i in 0..12 {
-        let angle = (i as f32 + 0.5) / 12.0 * TAU;
-
-        builder = builder.point(angle.cos(), angle.sin());
-
-        if i % 3 == 1 {
-            builder = builder.with_attatchment_point(4);
-        }
-    }
-
-    simulation.soft_bodies.insert(builder.build());
+    simulation
+        .soft_bodies
+        .insert(habitat_bubble(vec2(-5.0, 0.0)));
 
     let diagonal_spring = LinearSpring {
         target_distance: SQRT_2,
@@ -250,8 +227,8 @@ fn assemble_simulation() -> Simulation {
         }
     }
 
-    for x in 0..10 {
-        for y in 0..10 {
+    for x in 0..8 {
+        for y in 0..6 {
             simulation.soft_bodies.insert(
                 SoftBodyBuilder::default()
                     .gas_force(40.0)
@@ -413,4 +390,33 @@ fn assemble_simulation() -> Simulation {
     simulation.update_keys();
 
     simulation
+}
+
+pub fn habitat_bubble(offset: Vec2) -> SoftBody {
+    let mut builder = SoftBodyBuilder::default()
+        .connection_state(ConnectionState::Source)
+        .gas_force(10.0)
+        .mass(0.5)
+        .base_angular_spring(Some(AngularSpring {
+            force_constant: 50.0,
+            damping: 5.0,
+            ..Default::default()
+        }))
+        .spring_scale(0.75)
+        .with_actor(Actor::HabitatBubble {
+            minimum_pressure: 0.5,
+        })
+        .offset_ex(offset);
+
+    for i in 0..12 {
+        let angle = (i as f32 + 0.5) / 12.0 * TAU;
+
+        builder = builder.point(angle.cos(), angle.sin());
+
+        if i % 3 == 1 {
+            builder = builder.with_attatchment_point(4);
+        }
+    }
+
+    builder.build()
 }

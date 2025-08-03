@@ -1281,7 +1281,7 @@ impl Default for LinearSpring {
             damping: 50.0,
             compression: true,
             tension: true,
-            maximum_force: 0.5,
+            maximum_force: 0.75,
             maximum_damping: 100.0,
             destroy_on_maximum: true,
         }
