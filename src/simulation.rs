@@ -1,6 +1,6 @@
 use macroquad::{
     camera::Camera2D,
-    color::colors,
+    color::{Color, colors},
     input::{self, MouseButton},
     math::Vec2,
 };
@@ -101,6 +101,15 @@ impl Simulation {
         }
 
         if debug {
+            for (_, soft_body) in &self.soft_bodies {
+                if soft_body.pressure > f32::EPSILON {
+                    soft_body.fill_color(Color {
+                        a: (soft_body.pressure / soft_body.gas_force).clamp(0.0, 1.0) / 2.0,
+                        ..utils::generate_color_for_spring(soft_body.pressure / 3.0, 0.0)
+                    });
+                }
+            }
+
             for (_, soft_body) in &self.soft_bodies {
                 soft_body.draw_springs();
             }
