@@ -36,8 +36,10 @@ fn config() -> Conf {
 async fn main() {
     let mut simulation = assemble_simulation();
 
+    let zoom_speed = 1.1f32;
+    let mut screen_height = 10.0;
     let mut camera = Camera2D {
-        zoom: -2.0 / Vec2::splat(10.0),
+        zoom: -2.0 / Vec2::splat(screen_height),
         ..Default::default()
     };
 
@@ -64,6 +66,15 @@ async fn main() {
 
         if input::is_key_pressed(KeyCode::Space) {
             running ^= true;
+        }
+
+        let input = input::mouse_wheel().1.clamp(-1.0, 1.0);
+
+        if input.abs() > f32::EPSILON {
+            screen_height *= zoom_speed.powf(-input);
+            screen_height = screen_height.clamp(10.0, 100.0);
+
+            camera.zoom = -2.0 / Vec2::splat(screen_height);
         }
 
         // let mut input = vec2(0.0, 0.0);
