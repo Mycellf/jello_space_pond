@@ -1,12 +1,17 @@
 use std::ops::{Index, IndexMut, Neg};
 
 use macroquad::math::Vec2;
+use ndarray::Array2;
+
+use crate::utils::{RotateClockwise, RotateCounterClockwise};
 
 #[derive(Clone, Debug, Default)]
 pub struct LoopCrafting {
     pub points: [[Option<Direction>; Self::HEIGHT]; Self::WIDTH],
     pub start: Option<[usize; 2]>,
     pub end: Option<[usize; 2]>,
+
+    pub recipe: Option<Recipe>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -31,6 +36,8 @@ impl LoopCrafting {
 
         self.start = None;
         self.end = None;
+
+        self.recipe = None;
     }
 
     pub fn track_mouse(&mut self, offset: Vec2) {
@@ -39,7 +46,7 @@ impl LoopCrafting {
     }
 
     pub fn track_index(&mut self, index: [usize; 2]) {
-        if index[0] >= Self::WIDTH || index[1] >= Self::HEIGHT {
+        if self.recipe.is_some() || index[0] >= Self::WIDTH || index[1] >= Self::HEIGHT {
             return;
         }
 
@@ -61,7 +68,7 @@ impl LoopCrafting {
             }
 
             if self.start == self.end && self[start].is_some() {
-                todo!();
+                self.recipe = Some((&*self).into());
             }
         } else {
             self.start = Some(index);
@@ -120,5 +127,87 @@ impl Neg for Direction {
             Direction::Left => Direction::Right,
             Direction::Down => Direction::Up,
         }
+    }
+}
+
+impl RotateCounterClockwise for Direction {
+    fn rotate_counter_clockwise(&self) -> Self {
+        match self {
+            Direction::Right => Direction::Up,
+            Direction::Up => Direction::Left,
+            Direction::Left => Direction::Down,
+            Direction::Down => Direction::Right,
+        }
+    }
+}
+
+impl RotateClockwise for Direction {
+    fn rotate_clockwise(&self) -> Self {
+        -self.rotate_counter_clockwise()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Recipe {
+    pub contents: Array2<Option<Direction>>,
+}
+
+impl From<&LoopCrafting> for Recipe {
+    fn from(crafting: &LoopCrafting) -> Self {
+        if let Some(recipe) = &crafting.recipe {
+            return recipe.clone();
+        }
+
+        let mut min_x = usize::MAX;
+        let mut min_y = usize::MAX;
+        let mut max_x = 0;
+        let mut max_y = 0;
+
+        for (x, column) in crafting.points.iter().enumerate() {
+            for (y, point) in column.iter().enumerate() {
+                if point.is_some() {
+                    min_x = x.min(min_x);
+                    min_y = y.min(min_y);
+                    max_x = x.max(max_x);
+                    max_y = y.max(max_y);
+                }
+            }
+        }
+
+        if min_x > max_x || min_y > max_y {
+            unreachable!();
+        }
+
+        let size = [max_x - min_x + 1, max_y - min_y + 1];
+
+        let mut contents = Array2::from_elem(size, None);
+
+        for x in min_x..max_x + 1 {
+            for y in min_y..max_y + 1 {
+                contents[[x, y]] = crafting[[x, y]];
+            }
+        }
+
+        Recipe { contents }
+    }
+}
+
+impl PartialEq for Recipe {
+    fn eq(&self, other: &Self) -> bool {
+        if self.contents == other.contents {
+            return true;
+        }
+
+        let mut other_contents = other.contents.clone();
+
+        for _ in 0..3 {
+            other_contents = other_contents.rotate_counter_clockwise();
+
+            if self.contents == other_contents {
+                return true;
+            }
+        }
+
+        false
     }
 }

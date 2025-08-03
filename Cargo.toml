@@ -6,4 +6,5 @@ edition = "2024"
 [dependencies]
 earcut = "0.4.4"
 macroquad = "0.4.14"
+ndarray = "0.16.1"
 slotmap = "1.0.7"

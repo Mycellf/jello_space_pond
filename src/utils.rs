@@ -5,6 +5,7 @@ use macroquad::{
     math::{Vec2, vec2},
     shapes, window,
 };
+use ndarray::{Array2, Dimension};
 
 use crate::soft_body::BoundingBox;
 
@@ -149,4 +150,52 @@ pub fn line_segment_intersection(
         && u_times_divisor >= 0.0
         && u_times_divisor <= divisor)
         .then_some(([t_times_divisor, u_times_divisor], divisor))
+}
+
+pub trait RotateCounterClockwise {
+    fn rotate_counter_clockwise(&self) -> Self;
+}
+
+impl<T: RotateCounterClockwise> RotateCounterClockwise for Array2<T> {
+    fn rotate_counter_clockwise(&self) -> Self {
+        let (height, width) = self.raw_dim().into_pattern();
+
+        Array2::from_shape_fn([width, height], |(x, y)| {
+            self[[width - y - 1, x]].rotate_counter_clockwise()
+        })
+    }
+}
+
+impl<T: RotateCounterClockwise> RotateCounterClockwise for Option<T> {
+    fn rotate_counter_clockwise(&self) -> Self {
+        if let Some(inner) = self {
+            Some(inner.rotate_counter_clockwise())
+        } else {
+            None
+        }
+    }
+}
+
+pub trait RotateClockwise {
+    fn rotate_clockwise(&self) -> Self;
+}
+
+impl<T: RotateClockwise> RotateClockwise for Array2<T> {
+    fn rotate_clockwise(&self) -> Self {
+        let (height, width) = self.raw_dim().into_pattern();
+
+        Array2::from_shape_fn([width, height], |(x, y)| {
+            self[[y, width - x - 1]].rotate_clockwise()
+        })
+    }
+}
+
+impl<T: RotateClockwise> RotateClockwise for Option<T> {
+    fn rotate_clockwise(&self) -> Self {
+        if let Some(inner) = self {
+            Some(inner.rotate_clockwise())
+        } else {
+            None
+        }
+    }
 }
