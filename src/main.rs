@@ -295,7 +295,7 @@ fn assemble_simulation() -> Simulation {
     for x in 0..12 {
         for y in 2..12 {
             let mut builder = SoftBodyBuilder::default()
-                .gas_force(5.0)
+                .gas_force(10.0)
                 .friction(1.0)
                 .mass(0.5)
                 .base_angular_spring(Some(AngularSpring {
@@ -306,7 +306,7 @@ fn assemble_simulation() -> Simulation {
                 }))
                 .base_spring({
                     LinearSpring {
-                        force_constant: 25.0,
+                        force_constant: 50.0,
                         maximum_force: 1.5,
                         ..Default::default()
                     }
