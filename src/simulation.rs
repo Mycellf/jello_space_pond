@@ -577,7 +577,7 @@ impl Simulation {
     }
 
     pub fn update_keybind_editor(&mut self, egui: &Context) {
-        egui.set_zoom_factor(window::screen_dpi_scale());
+        egui.set_zoom_factor(window::screen_dpi_scale() / 2.0 * window::screen_width() / 750.0);
 
         let window = egui::Window::new("Info")
             .resizable(false)
