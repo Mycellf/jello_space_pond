@@ -45,6 +45,7 @@ async fn main() {
             style.spacing.scroll = egui::style::ScrollStyle::solid();
 
             style.visuals.slider_trailing_fill = true;
+            style.animation_time = 0.0;
         });
     });
 

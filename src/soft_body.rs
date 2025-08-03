@@ -992,6 +992,10 @@ impl SoftBody {
         }
         mass_moment / total_mass
     }
+
+    pub fn uses_keybinds(&self) -> bool {
+        self.actors.iter().any(Actor::uses_keybinds)
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -1074,6 +1078,15 @@ pub enum Actor {
     HabitatBubble {
         minimum_pressure: f32,
     },
+}
+
+impl Actor {
+    pub fn uses_keybinds(&self) -> bool {
+        match self {
+            Actor::RocketMotor { .. } => true,
+            Actor::HabitatBubble { .. } => false,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

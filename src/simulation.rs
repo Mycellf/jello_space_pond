@@ -35,7 +35,7 @@ new_key_type! {
     pub struct ConstraintKey;
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct InputState {
     pub selected_attatchment_point: Option<(AttatchmentPointHandle, f32)>,
     pub target_attatchment_point: Option<AttatchmentPointHandle>,
@@ -52,6 +52,28 @@ pub struct InputState {
     pub selected_soft_body: Option<SoftBodyKey>,
 
     pub keybind_focus: Option<KeybindFocus>,
+}
+
+impl Default for InputState {
+    fn default() -> Self {
+        Self {
+            selected_attatchment_point: None,
+            target_attatchment_point: None,
+            can_connect: false,
+
+            grabbing: false,
+            clicking: false,
+
+            ui_hovered: false,
+
+            mouse: Point::default(),
+
+            editing: true,
+            selected_soft_body: None,
+
+            keybind_focus: None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -473,8 +495,7 @@ impl Simulation {
             if input::is_mouse_button_pressed(MouseButton::Right) {
                 'outer: {
                     for (key, soft_body) in &self.soft_bodies {
-                        if soft_body.contains_point(mouse_position) && !soft_body.actors.is_empty()
-                        {
+                        if soft_body.uses_keybinds() && soft_body.contains_point(mouse_position) {
                             self.input_state.editing = true;
                             self.input_state.selected_soft_body = Some(key);
                             break 'outer;
@@ -488,6 +509,15 @@ impl Simulation {
 
         if !self.input_state.editing {
             self.input_state.selected_soft_body = None;
+        }
+
+        if input::is_key_pressed(KeyCode::F1) {
+            if self.input_state.editing && self.input_state.selected_soft_body.is_none() {
+                self.input_state.editing = false;
+            } else {
+                self.input_state.editing = true;
+                self.input_state.selected_soft_body = None;
+            }
         }
     }
 
@@ -510,6 +540,15 @@ impl Simulation {
 
         window.show(egui, |ui| {
             let Some(soft_body_key) = self.input_state.selected_soft_body else {
+                ui.label("This is a simple sandbox for building spaceships.");
+                ui.label("The orb with a white circle inside of it is your habitat bubble. If it is destroyed, \
+                    you will need to restart the program to regain control of the camera and interactables.");
+                ui.label("Click and drag on a white line to connect it to another or move it around. After \
+                    being connected, click on it again to disconnect.");
+                ui.label("Right click on an interactible to view and edit its keybinds. It can be used when \
+                    connected to your habitat bubble.");
+                ui.label("Press F1 to toggle this menu.");
+
                 return;
             };
 
@@ -575,7 +614,10 @@ impl Simulation {
                     self.input_state.keybind_focus,
                     input::get_last_key_pressed(),
                 ) {
-                    if key_code == KeyCode::Escape || Some(key_code) == keybind.get(keybind_focus) {
+                    if key_code == KeyCode::Escape
+                        || Some(key_code) == keybind.get(keybind_focus)
+                        || (KeyCode::F1 as u16..=KeyCode::F25 as u16).contains(&(key_code as u16))
+                    {
                     } else if key_code == KeyCode::Delete || key_code == KeyCode::Backspace {
                         match keybind_focus {
                             KeybindFocus::Activate(i) => {
