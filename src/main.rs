@@ -3,6 +3,7 @@ pub mod loop_crafting;
 pub mod particle;
 pub mod simulation;
 pub mod soft_body;
+pub mod stars;
 pub mod utils;
 
 use std::f32::consts::{SQRT_2, TAU};
@@ -48,6 +49,8 @@ async fn main() {
             style.animation_time = 0.0;
         });
     });
+
+    let stars = stars::from_seed(142);
 
     let mut simulation = assemble_simulation();
 
@@ -123,7 +126,17 @@ async fn main() {
 
         camera::set_camera(&camera);
 
-        simulation.draw(debug, utils::bounding_box_of_camera(&camera));
+        let bounding_box = utils::bounding_box_of_camera(&camera);
+
+        stars::draw_stars_in_area(
+            &stars,
+            [
+                [bounding_box.min_corner.x, bounding_box.min_corner.y].into(),
+                [bounding_box.max_corner().x, bounding_box.max_corner().y].into(),
+            ],
+        );
+
+        simulation.draw(debug, bounding_box);
 
         window::next_frame().await;
     }
