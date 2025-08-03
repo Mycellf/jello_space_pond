@@ -143,7 +143,10 @@ fn assemble_simulation() -> Simulation {
         ..Default::default()
     };
 
-    let orthogonal_spring = LinearSpring::default();
+    let orthogonal_spring = LinearSpring {
+        target_distance: 1.0 / 3.0,
+        ..Default::default()
+    };
 
     let corner_spring = LinearSpring {
         target_distance: SQRT_2 / 3.0,
@@ -153,90 +156,74 @@ fn assemble_simulation() -> Simulation {
     };
 
     let keybinds = [
-        [
-            Keybind {
-                activate: vec![KeyCode::S, KeyCode::A],
-                disable: vec![KeyCode::W, KeyCode::D],
-            },
-            Keybind {
-                activate: vec![KeyCode::W, KeyCode::D],
-                disable: vec![KeyCode::S, KeyCode::A],
-            },
-        ],
-        [
-            Keybind {
-                activate: vec![KeyCode::S, KeyCode::D],
-                disable: vec![KeyCode::W, KeyCode::A],
-            },
-            Keybind {
-                activate: vec![KeyCode::W, KeyCode::A],
-                disable: vec![KeyCode::S, KeyCode::D],
-            },
-        ],
+        Keybind {
+            activate: vec![KeyCode::W],
+            disable: vec![KeyCode::S],
+        },
+        Keybind {
+            activate: vec![KeyCode::S],
+            disable: vec![KeyCode::W],
+        },
+        Keybind {
+            activate: vec![KeyCode::W, KeyCode::D],
+            disable: vec![KeyCode::S, KeyCode::A],
+        },
+        Keybind {
+            activate: vec![KeyCode::S, KeyCode::A],
+            disable: vec![KeyCode::W, KeyCode::D],
+        },
+        Keybind {
+            activate: vec![KeyCode::W, KeyCode::A],
+            disable: vec![KeyCode::S, KeyCode::D],
+        },
+        Keybind {
+            activate: vec![KeyCode::S, KeyCode::D],
+            disable: vec![KeyCode::W, KeyCode::A],
+        },
     ];
 
-    for i in 0..10 {
-        simulation.soft_bodies.insert(
-            SoftBodyBuilder::default()
-                .offset(i as f32 * 2.0, 0.0)
-                .point(0.0, 0.0)
-                .with_attatchment_point(4)
-                .with_internal_spring_start(0)
-                .with_internal_spring_start(12)
-                .point(1.0 / 3.0, 0.0)
-                .with_internal_spring_start(2)
-                .with_internal_spring_start(10)
-                .point(2.0 / 3.0, 0.0)
-                .with_internal_spring_start(3)
-                .with_internal_spring_start(11)
-                .point(1.0, 0.0)
-                .with_internal_spring_start(1)
-                .with_internal_spring_start(8)
-                .point(1.0, 1.0 / 3.0)
-                .with_actor(Actor::RocketMotor {
-                    line: 0,
-                    force: vec2(100.0, 0.0),
-                    enable: keybinds[i % 2][0].clone(),
-                    particle_time: 0.0,
-                    max_particle_time: 0.005,
-                })
-                .with_internal_spring_start(7)
-                .with_internal_spring_end(3, corner_spring)
-                .with_internal_spring_end(12, slight_diagonal_spring)
-                .point(1.0, 2.0 / 3.0)
-                .with_internal_spring_start(4)
-                .with_internal_spring_start(6)
-                .with_internal_spring_start(13)
-                .point(1.0, 1.0)
-                .with_attatchment_point(4)
-                .with_internal_spring_start(9)
-                .with_internal_spring_end(0, diagonal_spring)
-                .point(2.0 / 3.0, 1.0)
-                .with_internal_spring_end(4, corner_spring)
-                .with_internal_spring_end(11, orthogonal_spring)
-                .point(1.0 / 3.0, 1.0)
-                .with_internal_spring_start(5)
-                .with_internal_spring_end(10, orthogonal_spring)
-                .point(0.0, 1.0)
-                .with_internal_spring_end(1, diagonal_spring)
-                .with_internal_spring_end(13, slight_diagonal_spring)
-                .point(0.0, 2.0 / 3.0)
-                .with_actor(Actor::RocketMotor {
-                    line: 0,
-                    force: vec2(100.0, 0.0),
-                    enable: keybinds[i % 2][1].clone(),
-                    particle_time: 0.0,
-                    max_particle_time: 0.005,
-                })
-                .with_internal_spring_end(5, corner_spring)
-                .with_internal_spring_end(9, slight_diagonal_spring)
-                .with_internal_spring_end(6, orthogonal_spring)
-                .point(0.0, 1.0 / 3.0)
-                .with_internal_spring_end(2, corner_spring)
-                .with_internal_spring_end(7, orthogonal_spring)
-                .with_internal_spring_end(8, slight_diagonal_spring)
-                .build(),
-        );
+    for x in 0..8 {
+        for y in 0..6 {
+            simulation.soft_bodies.insert(
+                SoftBodyBuilder::default()
+                    .offset(x as f32, -(y as f32) * 2.0)
+                    .point(0.0, 0.0)
+                    .with_attatchment_point(2)
+                    .with_internal_spring_start(0)
+                    .with_internal_spring_start(4)
+                    .point(1.0 / 3.0, 0.0)
+                    .with_internal_spring_start(1)
+                    .with_internal_spring_start(5)
+                    .with_attatchment_point(4)
+                    .point(1.0 / 3.0, 1.0 / 3.0)
+                    .with_internal_spring_start(2)
+                    .with_internal_spring_end(4, corner_spring)
+                    .point(1.0 / 3.0, 2.0 / 3.0)
+                    .with_internal_spring_start(3)
+                    .with_internal_spring_start(6)
+                    .point(1.0 / 3.0, 1.0)
+                    .with_attatchment_point(2)
+                    .with_internal_spring_start(7)
+                    .with_internal_spring_end(0, slight_diagonal_spring)
+                    .point(0.0, 1.0)
+                    .with_internal_spring_end(1, slight_diagonal_spring)
+                    .with_internal_spring_end(6, corner_spring)
+                    .point(0.0, 2.0 / 3.0)
+                    .with_internal_spring_end(3, orthogonal_spring)
+                    .with_internal_spring_end(7, corner_spring)
+                    .with_actor(Actor::RocketMotor {
+                        line: 0,
+                        force: vec2(100.0, 0.0),
+                        enable: keybinds[y].clone(),
+                        particle_time: 0.0,
+                        max_particle_time: 0.005,
+                    })
+                    .point(0.0, 1.0 / 3.0)
+                    .with_internal_spring_end(2, orthogonal_spring)
+                    .with_internal_spring_end(5, corner_spring)
+                    .build(),
+            );
+        }
     }
 
     for x in 0..12 {
@@ -272,6 +259,32 @@ fn assemble_simulation() -> Simulation {
                     .with_internal_spring_end(5, corner_spring)
                     .point(0.0, 1.0 / 3.0)
                     .with_internal_spring_end(2, corner_spring)
+                    .build(),
+            );
+
+            simulation.soft_bodies.insert(
+                SoftBodyBuilder::default()
+                    .offset(x as f32 * 4.0 - 1.0, y as f32 * 2.0)
+                    .point(0.0, 0.0)
+                    .with_attatchment_point(2)
+                    .with_internal_spring_start(0)
+                    .point(1.0 / 3.0, 0.0)
+                    .with_internal_spring_start(1)
+                    .with_attatchment_point(4)
+                    .point(1.0 / 3.0, 1.0 / 3.0)
+                    .with_internal_spring_start(2)
+                    .point(1.0 / 3.0, 2.0 / 3.0)
+                    .with_internal_spring_start(3)
+                    .point(1.0 / 3.0, 1.0)
+                    .with_attatchment_point(2)
+                    .with_internal_spring_end(0, slight_diagonal_spring)
+                    .point(0.0, 1.0)
+                    .with_attatchment_point(4)
+                    .with_internal_spring_end(1, slight_diagonal_spring)
+                    .point(0.0, 2.0 / 3.0)
+                    .with_internal_spring_end(3, orthogonal_spring)
+                    .point(0.0, 1.0 / 3.0)
+                    .with_internal_spring_end(2, orthogonal_spring)
                     .build(),
             );
         }
