@@ -548,6 +548,7 @@ impl Simulation {
                     being connected, click on it again to disconnect.");
                 ui.label("Right click on an interactible to view and edit its keybinds. It can be used when \
                     connected to your habitat bubble.");
+                ui.label("You can drag the edge of your habitat bubble to move. Scroll to zoom the camera.");
                 ui.label("Press F1 to toggle this menu.");
 
                 return;
