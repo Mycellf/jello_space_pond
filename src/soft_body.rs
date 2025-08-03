@@ -37,6 +37,34 @@ pub struct SoftBody {
 
     pub attatchment_points: Vec<AttatchmentPoint>,
     pub actors: Vec<Actor>,
+
+    pub connection_state: ConnectionState,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ConnectionState {
+    Source,
+    Connected,
+    Disconnected,
+}
+
+impl ConnectionState {
+    /// Returns `true` if the connection state is [`Connected`] or [`Source`].
+    ///
+    /// [`Connected`]: ConnectionState::Connected
+    /// [`Source`]: ConnectionState::Source
+    #[must_use]
+    pub fn is_connected(&self) -> bool {
+        matches!(self, Self::Connected | Self::Source)
+    }
+
+    /// Returns `true` if the connection state is [`Disconnected`].
+    ///
+    /// [`Disconnected`]: ConnectionState::Disconnected
+    #[must_use]
+    pub fn is_disconnected(&self) -> bool {
+        matches!(self, Self::Disconnected)
+    }
 }
 
 impl SoftBody {
@@ -83,6 +111,8 @@ impl SoftBody {
 
             attatchment_points: Vec::new(),
             actors: Vec::new(),
+
+            connection_state: ConnectionState::Disconnected,
         };
 
         soft_body.update_triangulation_indecies();
@@ -197,7 +227,7 @@ impl SoftBody {
                         point_a.position.lerp(point_b.position, -0.9),
                         point_b.position.lerp(point_a.position, -0.9),
                         0.2,
-                        if enable.is_down() {
+                        if enable.is_down() && self.connection_state.is_connected() {
                             utils::color_lerp(
                                 colors::RED,
                                 colors::YELLOW,
@@ -353,7 +383,7 @@ impl SoftBody {
                     particle_time,
                     max_particle_time,
                 } => {
-                    if enable.is_down() {
+                    if enable.is_down() && self.connection_state.is_connected() {
                         let i = *line;
                         let next = if i < self.shape.len() - 1 { i + 1 } else { 0 };
 
@@ -414,7 +444,7 @@ impl SoftBody {
                 Actor::HabitatBubble { minimum_pressure } => {
                     if self.pressure > *minimum_pressure {
                         new_camera_position = Some(center_of_mass);
-                    };
+                    }
                 }
             }
         }
@@ -1560,6 +1590,11 @@ impl SoftBodyBuilder {
             Actor::HabitatBubble { .. } => (),
         }
         self.soft_body.actors.push(actor);
+        self
+    }
+
+    pub fn connection_state(mut self, connection_state: ConnectionState) -> Self {
+        self.soft_body.connection_state = connection_state;
         self
     }
 }

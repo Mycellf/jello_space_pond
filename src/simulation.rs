@@ -9,7 +9,7 @@ use slotmap::{HopSlotMap, new_key_type};
 use crate::{
     constraint::{Constraint, PointHandle},
     particle::Particle,
-    soft_body::{AttatchmentPointHandle, LinearSpring, Point, SoftBody},
+    soft_body::{AttatchmentPointHandle, ConnectionState, LinearSpring, Point, SoftBody},
     utils,
 };
 
@@ -586,6 +586,65 @@ impl Simulation {
         }
     }
 
+    pub fn clear_connections_from(&mut self, soft_body_key: SoftBodyKey) -> Option<SoftBodyKey> {
+        let soft_body = &mut self.soft_bodies[soft_body_key];
+
+        let mut source = None;
+
+        if soft_body.connection_state.is_connected() {
+            if soft_body.connection_state == ConnectionState::Connected {
+                soft_body.connection_state = ConnectionState::Disconnected;
+            }
+
+            if soft_body.connection_state == ConnectionState::Source {
+                source = Some(soft_body_key);
+            }
+
+            for attatchment_point in soft_body.attatchment_points.clone() {
+                let Some(AttatchmentPointHandle {
+                    soft_body: connection,
+                    ..
+                }) = attatchment_point.connection
+                else {
+                    continue;
+                };
+
+                let result = self.clear_connections_from(connection);
+
+                if result.is_some() {
+                    source = result;
+                }
+            }
+        }
+
+        source
+    }
+
+    pub fn connect_attatched_soft_bodies(&mut self, soft_body_key: SoftBodyKey) {
+        let soft_body = &mut self.soft_bodies[soft_body_key];
+
+        if matches!(
+            soft_body.connection_state,
+            ConnectionState::Disconnected | ConnectionState::Source,
+        ) {
+            if soft_body.connection_state == ConnectionState::Disconnected {
+                soft_body.connection_state = ConnectionState::Connected;
+            }
+
+            for attatchment_point in soft_body.attatchment_points.clone() {
+                let Some(AttatchmentPointHandle {
+                    soft_body: connection,
+                    ..
+                }) = attatchment_point.connection
+                else {
+                    continue;
+                };
+
+                self.connect_attatched_soft_bodies(connection);
+            }
+        }
+    }
+
     #[must_use]
     pub fn are_attatchment_points_within_range(
         &self,
@@ -644,6 +703,12 @@ impl Simulation {
         &mut self,
         [handle_a, handle_b]: [AttatchmentPointHandle; 2],
     ) -> Option<()> {
+        if (self.soft_bodies[handle_a.soft_body].connection_state).is_connected() {
+            self.connect_attatched_soft_bodies(handle_b.soft_body);
+        } else if (self.soft_bodies[handle_b.soft_body].connection_state).is_connected() {
+            self.connect_attatched_soft_bodies(handle_a.soft_body);
+        }
+
         let [soft_body_a, soft_body_b] = self
             .soft_bodies
             .get_disjoint_mut([handle_a.soft_body, handle_b.soft_body])?;
@@ -710,6 +775,8 @@ impl Simulation {
 
     #[must_use]
     pub fn disconnect_attatchment_point(&mut self, handle_a: AttatchmentPointHandle) -> Option<()> {
+        let source = self.clear_connections_from(handle_a.soft_body);
+
         let handle_b = &self
             .soft_bodies
             .get(handle_a.soft_body)?
@@ -768,6 +835,10 @@ impl Simulation {
             } else {
                 point_b = length_b - 1;
             }
+        }
+
+        if let Some(source) = source {
+            self.connect_attatched_soft_bodies(source);
         }
 
         Some(())

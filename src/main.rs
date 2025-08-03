@@ -17,7 +17,8 @@ use macroquad::{
 use crate::{
     simulation::Simulation,
     soft_body::{
-        Actor, AngularSpring, AttatchmentPointHandle, Keybind, LinearSpring, SoftBodyBuilder,
+        Actor, AngularSpring, AttatchmentPointHandle, ConnectionState, Keybind, LinearSpring,
+        SoftBodyBuilder,
     },
 };
 
@@ -106,6 +107,7 @@ fn assemble_simulation() -> Simulation {
     let mut simulation = Simulation::new();
 
     let mut builder = SoftBodyBuilder::default()
+        .connection_state(ConnectionState::Source)
         .gas_force(10.0)
         .mass(0.5)
         .base_angular_spring(Some(AngularSpring {
