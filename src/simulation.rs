@@ -65,7 +65,15 @@ impl Simulation {
 
     pub fn draw(&self, debug: bool) {
         for (_, soft_body) in &self.soft_bodies {
+            soft_body.draw_actors_back();
+        }
+
+        for (_, soft_body) in &self.soft_bodies {
             soft_body.draw();
+        }
+
+        for (_, soft_body) in &self.soft_bodies {
+            soft_body.draw_actors_front();
         }
 
         for (_, soft_body) in &self.soft_bodies {

@@ -88,9 +88,7 @@ impl SoftBody {
     }
 
     pub fn draw(&self) {
-        self.draw_actors_back();
         self.fill_color(Self::FILL_COLOR);
-        self.draw_actors_front();
     }
 
     pub fn draw_attatchment_points(&self) {
