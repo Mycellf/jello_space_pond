@@ -5,6 +5,8 @@ edition = "2024"
 
 [dependencies]
 earcut = "0.4.4"
+egui = "0.31.0"
+egui-macroquad = { version = "0.17.3", default-features = false }
 macroquad = "0.4.14"
 ndarray = "0.16.1"
 slotmap = "1.0.7"

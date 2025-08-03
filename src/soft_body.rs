@@ -16,7 +16,7 @@ use macroquad::{
 
 use crate::{
     particle::{Particle, Shape},
-    simulation::{ConstraintKey, SoftBodyKey},
+    simulation::{ConstraintKey, KeybindFocus, SoftBodyKey},
     utils,
 };
 
@@ -216,6 +216,14 @@ impl SoftBody {
         };
 
         models::draw_mesh(&mesh);
+    }
+
+    pub fn outline_color(&self, thickness: f32, color: Color) {
+        for i in 0..self.shape.len() {
+            let (point_a, _, point_b) = self.get_line(i).unwrap();
+
+            utils::draw_line(point_a.position, point_b.position, thickness, color);
+        }
     }
 
     pub fn draw_actors_back(&self) {
@@ -1087,6 +1095,37 @@ impl Keybind {
         self.disable
             .iter()
             .any(|&key_code| input::is_key_down(key_code))
+    }
+
+    pub fn contains(&self, key_code: KeyCode) -> bool {
+        self.activate.contains(&key_code) || self.disable.contains(&key_code)
+    }
+
+    pub fn get(&self, focus: KeybindFocus) -> Option<KeyCode> {
+        match focus {
+            KeybindFocus::Activate(i) => self.activate.get(i).copied(),
+            KeybindFocus::NewActivate => None,
+            KeybindFocus::Disable(i) => self.disable.get(i).copied(),
+            KeybindFocus::NewDisable => None,
+        }
+    }
+
+    pub fn remove(&mut self, remove: KeyCode) -> bool {
+        for (i, &key_code) in self.activate.iter().enumerate() {
+            if key_code == remove {
+                self.activate.remove(i);
+                return true;
+            }
+        }
+
+        for (i, &key_code) in self.disable.iter().enumerate() {
+            if key_code == remove {
+                self.disable.remove(i);
+                return true;
+            }
+        }
+
+        false
     }
 }
 

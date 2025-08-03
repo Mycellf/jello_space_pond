@@ -34,6 +34,20 @@ fn config() -> Conf {
 
 #[macroquad::main(config)]
 async fn main() {
+    egui_macroquad::cfg(|egui| {
+        egui.style_mut(|style| {
+            style.interaction.selectable_labels = false;
+
+            style.visuals.window_shadow.offset = [0, 0];
+            style.visuals.window_shadow.spread = 15;
+
+            style.visuals.striped = true;
+            style.spacing.scroll = egui::style::ScrollStyle::solid();
+
+            style.visuals.slider_trailing_fill = true;
+        });
+    });
+
     let mut simulation = assemble_simulation();
 
     let zoom_speed = 1.1f32;
@@ -45,7 +59,7 @@ async fn main() {
 
     let mut fullscreen = START_IN_FULLSCREEN;
     let mut debug = false;
-    let mut running = true;
+    let running = true;
 
     let ticks_per_second = 120.0;
 
@@ -64,9 +78,9 @@ async fn main() {
             debug ^= true;
         }
 
-        if input::is_key_pressed(KeyCode::Space) {
-            running ^= true;
-        }
+        // if input::is_key_pressed(KeyCode::Space) {
+        //     running ^= true;
+        // }
 
         let input = input::mouse_wheel().1.clamp(-1.0, 1.0);
 
@@ -166,33 +180,6 @@ fn assemble_simulation() -> Simulation {
         ..Default::default()
     };
 
-    let keybinds = [
-        Keybind {
-            activate: vec![KeyCode::W],
-            disable: vec![KeyCode::S],
-        },
-        Keybind {
-            activate: vec![KeyCode::S],
-            disable: vec![KeyCode::W],
-        },
-        Keybind {
-            activate: vec![KeyCode::W, KeyCode::D],
-            disable: vec![KeyCode::S, KeyCode::A],
-        },
-        Keybind {
-            activate: vec![KeyCode::S, KeyCode::A],
-            disable: vec![KeyCode::W, KeyCode::D],
-        },
-        Keybind {
-            activate: vec![KeyCode::W, KeyCode::A],
-            disable: vec![KeyCode::S, KeyCode::D],
-        },
-        Keybind {
-            activate: vec![KeyCode::S, KeyCode::D],
-            disable: vec![KeyCode::W, KeyCode::A],
-        },
-    ];
-
     for x in 0..8 {
         for y in 0..6 {
             simulation.soft_bodies.insert(
@@ -225,7 +212,10 @@ fn assemble_simulation() -> Simulation {
                     .with_actor(Actor::RocketMotor {
                         line: 0,
                         force: vec2(100.0, 0.0),
-                        enable: keybinds[y].clone(),
+                        enable: Keybind {
+                            activate: vec![KeyCode::W],
+                            disable: vec![KeyCode::S],
+                        },
                         particle_time: 0.0,
                         max_particle_time: 0.005,
                     })
