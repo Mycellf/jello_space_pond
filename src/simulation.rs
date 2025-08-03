@@ -9,7 +9,9 @@ use slotmap::{HopSlotMap, new_key_type};
 use crate::{
     constraint::{Constraint, PointHandle},
     particle::Particle,
-    soft_body::{AttatchmentPointHandle, ConnectionState, LinearSpring, Point, SoftBody},
+    soft_body::{
+        AttatchmentPointHandle, ConnectionState, JoiningSpring, LinearSpring, Point, SoftBody,
+    },
     utils,
 };
 
@@ -43,18 +45,31 @@ pub struct InputState {
 }
 
 impl Simulation {
-    pub const GRAB_SPRING: LinearSpring = LinearSpring {
-        target_distance: 0.0,
+    pub const GRAB_SPRING: JoiningSpring = JoiningSpring {
         force_constant: 10.0,
-        damping: 2.5,
+        normal_damping: 2.5,
+        perpendicular_damping: 5.0,
         compression: true,
         tension: true,
-        maximum_force: 0.5,
-        maximum_damping: 50.0,
+        maximum_force: 0.75,
+        maximum_normal_damping: 50.0,
+        maximum_perpendicular_damping: 50.0,
     };
+
+    pub const PULL_SPRING: JoiningSpring = JoiningSpring {
+        force_constant: 10.0,
+        normal_damping: 2.5,
+        perpendicular_damping: 10.0,
+        compression: true,
+        tension: true,
+        maximum_force: 0.75,
+        maximum_normal_damping: 50.0,
+        maximum_perpendicular_damping: 50.0,
+    };
+
     pub const ALIGN_SPRING: LinearSpring = LinearSpring {
         target_distance: 0.0,
-        force_constant: 50.0,
+        force_constant: 100.0,
         damping: 50.0,
         compression: true,
         tension: true,
@@ -467,7 +482,7 @@ impl Simulation {
                 total_mass_a += point_a.mass;
                 total_mass_b += point_b.mass;
 
-                let (_, _, impulse, _) = Self::GRAB_SPRING.get_force(point_a, point_b);
+                let (_, _, impulse, _) = Self::PULL_SPRING.get_force(point_a, point_b);
 
                 point_a.impulse += impulse / 2.0 * dt * point_a.mass;
             }

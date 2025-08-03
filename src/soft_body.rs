@@ -1289,6 +1289,117 @@ impl Default for AngularSpring {
     }
 }
 
+/// If the points are at the exact same position, no force is applied
+#[derive(Clone, Copy, Debug)]
+pub struct JoiningSpring {
+    pub force_constant: f32,
+    pub normal_damping: f32,
+    pub perpendicular_damping: f32,
+    pub compression: bool,
+    pub tension: bool,
+    pub maximum_force: f32,
+    pub maximum_normal_damping: f32,
+    pub maximum_perpendicular_damping: f32,
+}
+
+impl JoiningSpring {
+    pub fn draw_line(&self, point_a: &Point, point_b: &Point) {
+        let (force, damping, _, _) = self.get_force(point_a, point_b);
+
+        let color = utils::generate_color_for_spring(force, damping);
+
+        utils::draw_line(point_a.position, point_b.position, 0.05, color);
+    }
+
+    pub fn apply_force(&self, point_a: &mut Point, point_b: &mut Point, dt: f32) -> bool {
+        let (_, _, impulse, maximum_reached) = self.get_force(point_a, point_b);
+
+        point_a.impulse += impulse / 2.0 * dt;
+        point_b.impulse -= impulse / 2.0 * dt;
+
+        maximum_reached
+    }
+
+    pub fn get_force(&self, point_a: &Point, point_b: &Point) -> (f32, f32, Vec2, bool) {
+        fn clamp(value: f32, range: f32, maximum_reached: &mut bool) -> f32 {
+            if value > range {
+                *maximum_reached = true;
+                range
+            } else if value < -range {
+                *maximum_reached = true;
+                -range
+            } else {
+                value
+            }
+        }
+
+        let mut maximum_reached = false;
+
+        let displacement = point_a.position - point_b.position;
+        let distance = displacement.length();
+
+        if distance <= f32::EPSILON {
+            return (0.0, 0.0, Vec2::ZERO, false);
+        }
+
+        let direction = displacement / distance;
+
+        let relative_velocity = point_a.velocity - point_b.velocity;
+        let normal_velocity = relative_velocity.dot(direction);
+        let perpendicular_velocity = relative_velocity.perp().dot(direction);
+
+        let force = utils::clamp_sign(
+            self.force_constant * clamp(-distance, self.maximum_force, &mut maximum_reached),
+            self.compression,
+            self.tension,
+        );
+        let damping = utils::clamp_sign(
+            -self.normal_damping
+                * clamp(
+                    normal_velocity,
+                    self.maximum_normal_damping,
+                    &mut maximum_reached,
+                ),
+            self.compression,
+            self.tension,
+        );
+        let perpendicular_damping = utils::clamp_sign(
+            self.perpendicular_damping
+                * clamp(
+                    perpendicular_velocity,
+                    self.maximum_perpendicular_damping,
+                    &mut maximum_reached,
+                ),
+            self.compression,
+            self.tension,
+        );
+
+        let total_force = force + damping;
+
+        (
+            force,
+            damping,
+            direction * total_force + direction.perp() * perpendicular_damping,
+            maximum_reached,
+        )
+    }
+}
+
+impl Default for JoiningSpring {
+    fn default() -> Self {
+        Self {
+            force_constant: 1000.0,
+            normal_damping: 50.0,
+            perpendicular_damping: 50.0,
+            compression: true,
+            tension: true,
+            maximum_force: 0.5,
+            maximum_normal_damping: 100.0,
+            maximum_perpendicular_damping: 100.0,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default)]
 pub struct BoundingBox {
     pub min_corner: Vec2,
