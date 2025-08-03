@@ -81,6 +81,7 @@ impl SoftBody {
         tension: true,
         maximum_force: 100.0,
         maximum_damping: 100.0,
+        destroy_on_maximum: false,
     };
 
     pub const FILL_COLOR: Color = colors::LIGHTGRAY;
@@ -249,6 +250,7 @@ impl SoftBody {
                     );
                 }
                 Actor::HabitatBubble { .. } => (),
+                Actor::Piston { .. } => (),
             }
         }
     }
@@ -270,6 +272,26 @@ impl SoftBody {
                             colors::DARKGRAY
                         },
                     );
+                }
+                Actor::Piston {
+                    lengths, enable, ..
+                } => {
+                    for (line, _, _) in lengths {
+                        let SpringIndex::Edge(line) = line else {
+                            continue;
+                        };
+                        let (point_a, _, point_b) = self.get_line(*line).unwrap();
+                        utils::draw_line(
+                            point_a.position.lerp(point_b.position, 0.2),
+                            point_b.position.lerp(point_a.position, 0.2),
+                            0.1,
+                            if enable.is_down() && self.connection_state.is_connected() {
+                                colors::GREEN
+                            } else {
+                                colors::RED
+                            },
+                        );
+                    }
                 }
             }
         }
@@ -454,6 +476,18 @@ impl SoftBody {
                 Actor::HabitatBubble { minimum_pressure } => {
                     if self.pressure > *minimum_pressure {
                         new_camera_position = Some(center_of_mass);
+                    }
+                }
+                Actor::Piston { lengths, enable } => {
+                    let enabled = enable.is_down() && self.connection_state.is_connected();
+
+                    for (line, off_length, on_length) in &*lengths {
+                        let spring = match line {
+                            SpringIndex::Edge(i) => &mut self.shape[*i].1.spring,
+                            SpringIndex::Internal(i) => &mut self.internal_springs[*i].1,
+                        };
+
+                        spring.target_distance = if enabled { *on_length } else { *off_length };
                     }
                 }
             }
@@ -1078,12 +1112,22 @@ pub enum Actor {
     HabitatBubble {
         minimum_pressure: f32,
     },
+    Piston {
+        lengths: Vec<(SpringIndex, f32, f32)>,
+        enable: Keybind,
+    },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SpringIndex {
+    Edge(usize),
+    Internal(usize),
 }
 
 impl Actor {
     pub fn uses_keybinds(&self) -> bool {
         match self {
-            Actor::RocketMotor { .. } => true,
+            Actor::RocketMotor { .. } | Actor::Piston { .. } => true,
             Actor::HabitatBubble { .. } => false,
         }
     }
@@ -1154,6 +1198,7 @@ pub struct LinearSpring {
     pub tension: bool,
     pub maximum_force: f32,
     pub maximum_damping: f32,
+    pub destroy_on_maximum: bool,
 }
 
 impl LinearSpring {
@@ -1219,7 +1264,12 @@ impl LinearSpring {
 
         let total_force = force + damping;
 
-        (force, damping, direction * total_force, maximum_reached)
+        (
+            force,
+            damping,
+            direction * total_force,
+            maximum_reached && self.destroy_on_maximum,
+        )
     }
 }
 
@@ -1233,6 +1283,7 @@ impl Default for LinearSpring {
             tension: true,
             maximum_force: 0.5,
             maximum_damping: 100.0,
+            destroy_on_maximum: true,
         }
     }
 }
@@ -1767,6 +1818,7 @@ impl SoftBodyBuilder {
                 *line = self.soft_body.shape.len() - 1;
             }
             Actor::HabitatBubble { .. } => (),
+            Actor::Piston { .. } => (),
         }
         self.soft_body.actors.push(actor);
         self

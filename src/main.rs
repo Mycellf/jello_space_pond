@@ -18,7 +18,7 @@ use crate::{
     simulation::Simulation,
     soft_body::{
         Actor, AngularSpring, AttatchmentPointHandle, ConnectionState, Keybind, LinearSpring,
-        SoftBodyBuilder,
+        SoftBodyBuilder, SpringIndex,
     },
 };
 
@@ -174,6 +174,15 @@ fn assemble_simulation() -> Simulation {
         ..Default::default()
     };
 
+    let piston_spring = LinearSpring {
+        target_distance: 1.0 / 3.0,
+        force_constant: 500.0,
+        damping: 100.0,
+        maximum_force: 0.25,
+        destroy_on_maximum: false,
+        ..Default::default()
+    };
+
     let corner_spring = LinearSpring {
         target_distance: SQRT_2 / 3.0,
         damping: 100.0,
@@ -223,6 +232,49 @@ fn assemble_simulation() -> Simulation {
                     .point(0.0, 1.0 / 3.0)
                     .with_internal_spring_end(2, orthogonal_spring)
                     .with_internal_spring_end(5, corner_spring)
+                    .build(),
+            );
+        }
+    }
+
+    for x in 0..10 {
+        for y in 0..10 {
+            simulation.soft_bodies.insert(
+                SoftBodyBuilder::default()
+                    .gas_force(40.0)
+                    .offset(-(x as f32) - 10.0, -(y as f32) * 2.0)
+                    .base_angular_spring(Some(AngularSpring {
+                        damping: 20.0,
+                        ..Default::default()
+                    }))
+                    .with_actor(Actor::Piston {
+                        lengths: vec![
+                            (SpringIndex::Edge(0), 1.0 / 3.0, 1.0),
+                            (SpringIndex::Edge(4), 1.0 / 3.0, 1.0),
+                            (SpringIndex::Internal(0), 1.0 / 3.0, 1.0),
+                            (SpringIndex::Internal(1), 1.0 / 3.0, 1.0),
+                        ],
+                        enable: Keybind {
+                            activate: vec![KeyCode::Enter],
+                            disable: vec![],
+                        },
+                    })
+                    .point(0.0, 0.0)
+                    .with_spring(piston_spring)
+                    .point(1.0 / 3.0, 0.0)
+                    .with_attatchment_point(4)
+                    .point(1.0 / 3.0, 1.0 / 3.0)
+                    .with_internal_spring_start(2)
+                    .point(1.0 / 3.0, 2.0 / 3.0)
+                    .with_internal_spring_start(3)
+                    .point(1.0 / 3.0, 1.0)
+                    .with_spring(piston_spring)
+                    .point(0.0, 1.0)
+                    .with_attatchment_point(4)
+                    .point(0.0, 2.0 / 3.0)
+                    .with_internal_spring_end(3, piston_spring)
+                    .point(0.0, 1.0 / 3.0)
+                    .with_internal_spring_end(2, piston_spring)
                     .build(),
             );
         }
