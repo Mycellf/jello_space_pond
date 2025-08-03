@@ -695,7 +695,7 @@ impl Simulation {
                             on_length / off_length
                         };
                         let mut new_length = length;
-                        ui.add(Slider::new(&mut new_length, 1.0..=6.0));
+                        ui.add(Slider::new(&mut new_length, 1.5..=6.0));
 
                         if length != new_length {
                             for (_, off_length, on_length) in lengths {
